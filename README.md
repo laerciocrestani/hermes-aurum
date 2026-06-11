@@ -406,6 +406,30 @@ Skipped Telegram in ④? Run `aurum gateway setup` first.
 
 Docs: [Gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) · [Telegram](https://hermes-agent.nousresearch.com/docs/user-guide/messaging/telegram)
 
+#### ⑥b Approve pairing (first connection)
+
+After the gateway is **running**, authorize yourself on Telegram:
+
+**On your phone**
+
+1. Open Telegram → **new chat** with the bot you created
+2. Send `/start`
+3. The bot replies with a pairing code (8 characters, e.g. `DTN4K8XP`)
+
+**On your terminal**
+
+```bash
+aurum pairing approve telegram DTN4K8XP
+```
+
+Replace `DTN4K8XP` with the code the bot sent you. Codes expire after 1 hour.
+
+```bash
+aurum pairing list    # pending + approved users
+```
+
+> If you set `TELEGRAM_ALLOWED_USERS` correctly in step ④, pairing may be skipped — but `/start` + approve is the safest first-time flow when the bot does not respond yet.
+
 ---
 
 ### ⑦ Use Aurum
