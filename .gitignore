@@ -1,0 +1,11 @@
+# User data — NEVER commit
+data/ledger.jsonl
+*.jsonl.bak
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# OS
+.DS_Store
