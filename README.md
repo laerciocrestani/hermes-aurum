@@ -77,6 +77,7 @@ mkdir -p "$PROFILE/skills"
 
 ln -sf "$REPO/skills/financial-operator" "$PROFILE/skills/financial-operator"
 ln -sf "$REPO/skills/financial-mentor" "$PROFILE/skills/financial-mentor"
+ln -sf "$REPO/references" "$PROFILE/references"
 ```
 
 **Copy (stable usage):**
@@ -86,7 +87,44 @@ cp -r skills/* ~/.hermes/profiles/aurum/skills/
 cp -r references ~/.hermes/profiles/aurum/
 ```
 
-### 4. Configure SOUL and model
+### 4. Customize categories (required)
+
+The operator skill maps your natural language to **exact** category strings in `references/categories.json`. `ledger.py` rejects any category not listed there.
+
+**Edit the file in your native language** so the agent understands how you describe expenses and income:
+
+| Install method | File to edit |
+|----------------|--------------|
+| Symlink (skills) | `references/categories.json` in this repo |
+| Copy | `~/.hermes/profiles/aurum/references/categories.json` |
+
+Default categories are in English. Example for Portuguese:
+
+```json
+{
+  "expense": [
+    "Alimentação",
+    "Transporte",
+    "Moradia",
+    "Saúde",
+    "Lazer",
+    "Educação",
+    "Outros"
+  ],
+  "income": [
+    "Salário",
+    "Freelance",
+    "Investimentos",
+    "Outros"
+  ]
+}
+```
+
+After editing, use those exact names when logging — e.g. `"category": "Alimentação"` in the ledger. The agent will suggest from this list when you do not specify a category.
+
+You can add or remove categories, but keep the `expense` and `income` keys. Restart is not required; the scripts read the file on each append.
+
+### 5. Configure SOUL and model
 
 ```bash
 cp docs/SOUL.example.md ~/.hermes/profiles/aurum/SOUL.md
@@ -95,11 +133,81 @@ cp docs/SOUL.example.md ~/.hermes/profiles/aurum/SOUL.md
 # ~/.hermes/profiles/aurum/config.yaml
 ```
 
-### 5. Run
+### 6. Connect via Telegram (recommended)
+
+Use Telegram to log expenses and ask balances from your phone. Each Hermes profile runs its own bot — the `aurum` profile gets the `aurum` command (same as `hermes -p aurum`).
+
+#### 6.1 Create a bot with BotFather
+
+1. Open Telegram and go to [@BotFather](https://t.me/BotFather)
+2. Send `/newbot`
+3. Choose a **display name** (e.g. `Aurum`)
+4. Choose a **username** ending in `bot` (e.g. `my_aurum_finance_bot`)
+5. Copy the **API token** BotFather returns (format: `123456789:ABCdef...`)
+
+Keep the token secret. If it leaks, revoke it in BotFather with `/revoke`.
+
+Optional — improve the bot profile in BotFather:
+
+| Command | Purpose |
+|---------|---------|
+| `/setdescription` | Short “what can this bot do?” text |
+| `/setabouttext` | Text on the bot profile |
+| `/setcommands` | Command menu (`/help`, `/new`, etc.) |
+
+#### 6.2 Get your Telegram user ID
+
+Hermes only accepts messages from allowed users. Your user ID is a number (not your `@username`).
+
+1. Message [@userinfobot](https://t.me/userinfobot) on Telegram
+2. Copy the numeric ID (e.g. `123456789`)
+
+#### 6.3 Wire the bot to the Aurum profile
+
+**Interactive (recommended):**
+
+```bash
+aurum gateway setup
+```
+
+Select **Telegram**, paste the bot token, and enter your user ID when prompted.
+
+**Manual** — edit `~/.hermes/profiles/aurum/.env`:
+
+```bash
+TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrSTUvwxYZ
+TELEGRAM_ALLOWED_USERS=123456789
+```
+
+For multiple users, comma-separate IDs. Alternatively, use DM pairing: unknown users get a code; approve with `hermes pairing approve telegram <CODE>`.
+
+#### 6.4 Start the gateway
+
+```bash
+aurum gateway start
+```
+
+For a background service (macOS launchd / Linux systemd):
+
+```bash
+aurum gateway install
+aurum gateway start
+aurum gateway status
+```
+
+Send a message to your bot on Telegram — e.g. “I spent R$ 52.30 at the grocery store using Inter.” Aurum uses the **financial-operator** and **financial-mentor** skills from this profile.
+
+Docs: [Hermes Messaging Gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) · [Telegram setup](https://hermes-agent.nousresearch.com/docs/user-guide/messaging/telegram)
+
+### 7. Run
+
+**CLI:**
 
 ```bash
 aurum chat
 ```
+
+**Telegram:** message your bot after step 6.
 
 On the first recorded transaction, the ledger is created automatically at `$HERMES_HOME/data/ledger.jsonl`.
 
