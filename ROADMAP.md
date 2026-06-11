@@ -17,7 +17,7 @@ Items marked as planned are **not implemented** — do not confuse them with the
 ## MVP v1.0 — Shipped
 
 - Personal append-only ledger (`ledger.jsonl`)
-- Hermes skills: `operador-financeiro` + `mentor-financeiro`
+- Hermes skills: `financial-operator` + `financial-mentor`
 - Scripts: `ledger.py`, `rebuild_state.py`, `reports.py`
 - Events: account, expense, income, transfer, investment, liability, adjustment
 - Net worth derived from history (balances never persisted)

@@ -1,5 +1,5 @@
 ---
-name: mentor-financeiro
+name: financial-mentor
 description: "Use when user asks for financial advice: can I, should I, is it worth, portfolio review. Requires rebuild_state.py first. Never modify ledger."
 version: 1.0.0
 author: Aurum
@@ -7,7 +7,7 @@ license: MIT
 metadata:
   hermes:
     tags: [finance, mentor, advice, guidance]
-    related_skills: [operador-financeiro]
+    related_skills: [financial-operator]
 ---
 
 # Financial Mentor
@@ -18,15 +18,15 @@ Aurum mentor mode (10%). Activated only when the user asks for guidance.
 
 Triggers: "can I", "should I", "is it worth", "is my portfolio good", "should I pay off debt", "should I invest in".
 
-**Do not use for:** logging transactions, balance lookups, reports — use `operador-financeiro`.
+**Do not use for:** logging transactions, balance lookups, reports — use `financial-operator`.
 
 ## Procedure
 
 1. **Required:** run state and reports before any advice:
 
 ```bash
-python3 skills/operador-financeiro/scripts/rebuild_state.py
-python3 skills/operador-financeiro/scripts/reports.py summary
+python3 skills/financial-operator/scripts/rebuild_state.py
+python3 skills/financial-operator/scripts/reports.py summary
 ```
 
 2. Present facts with caveat: "Based on what is recorded..."

@@ -1,5 +1,5 @@
 ---
-name: operador-financeiro
+name: financial-operator
 description: "Use for logging transactions, balances, reports, and net worth. Facts only — no opinions. Always run ledger.py and rebuild_state.py scripts."
 version: 1.0.0
 author: Aurum
@@ -7,7 +7,7 @@ license: MIT
 metadata:
   hermes:
     tags: [finance, ledger, operator, bookkeeping]
-    related_skills: [mentor-financeiro]
+    related_skills: [financial-mentor]
 ---
 
 # Financial Operator
@@ -21,7 +21,7 @@ Default Aurum mode (90%). Register events, categorize, report facts. No mentorin
 - User asks spending by category or monthly reports
 - User needs an adjustment (physical count mismatch)
 
-**Do not use for:** "Can I buy?", "Should I invest?" — use `mentor-financeiro`.
+**Do not use for:** "Can I buy?", "Should I invest?" — use `financial-mentor`.
 
 ## Golden Rule
 
@@ -32,7 +32,7 @@ Never calculate balances manually. Never store balances as truth. Always derive 
 All scripts live next to this skill:
 
 ```
-skills/operador-financeiro/scripts/
+skills/financial-operator/scripts/
 ├── ledger.py
 ├── rebuild_state.py
 └── reports.py
@@ -47,13 +47,13 @@ Run from repo root or any cwd — paths resolve via `__file__`.
 3. Append event (auto-inits ledger on first write):
 
 ```bash
-python3 skills/operador-financeiro/scripts/ledger.py append '<json>'
+python3 skills/financial-operator/scripts/ledger.py append '<json>'
 ```
 
 4. Rebuild state:
 
 ```bash
-python3 skills/operador-financeiro/scripts/rebuild_state.py
+python3 skills/financial-operator/scripts/rebuild_state.py
 ```
 
 5. Reply with confirmation (no opinions):
@@ -82,9 +82,9 @@ python3 skills/operador-financeiro/scripts/rebuild_state.py
 ## Reports
 
 ```bash
-python3 skills/operador-financeiro/scripts/reports.py monthly --month 2026-06
-python3 skills/operador-financeiro/scripts/reports.py category --name Food --month 2026-06
-python3 skills/operador-financeiro/scripts/reports.py summary
+python3 skills/financial-operator/scripts/reports.py monthly --month 2026-06
+python3 skills/financial-operator/scripts/reports.py category --name Food --month 2026-06
+python3 skills/financial-operator/scripts/reports.py summary
 ```
 
 ## Validation (enforced by ledger.py)

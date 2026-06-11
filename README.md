@@ -75,8 +75,8 @@ REPO="$(pwd)"
 PROFILE="$HOME/.hermes/profiles/aurum"
 mkdir -p "$PROFILE/skills"
 
-ln -sf "$REPO/skills/operador-financeiro" "$PROFILE/skills/operador-financeiro"
-ln -sf "$REPO/skills/mentor-financeiro" "$PROFILE/skills/mentor-financeiro"
+ln -sf "$REPO/skills/financial-operator" "$PROFILE/skills/financial-operator"
+ln -sf "$REPO/skills/financial-mentor" "$PROFILE/skills/financial-mentor"
 ```
 
 **Copy (stable usage):**
@@ -116,13 +116,13 @@ hermes-aurum/
 │   ├── categories.json
 │   └── ledger.seed.jsonl
 └── skills/
-    ├── operador-financeiro/
+    ├── financial-operator/
     │   ├── SKILL.md
     │   └── scripts/
     │       ├── ledger.py
     │       ├── rebuild_state.py
     │       └── reports.py
-    └── mentor-financeiro/
+    └── financial-mentor/
         └── SKILL.md
 ```
 
@@ -152,7 +152,7 @@ Supported types: `account`, `expense`, `income`, `transfer`, `investment`, `liab
 ## Scripts (direct usage)
 
 ```bash
-SCRIPT="skills/operador-financeiro/scripts"
+SCRIPT="skills/financial-operator/scripts"
 
 # Log an expense (auto-inits ledger on first run)
 python3 "$SCRIPT/ledger.py" append '{"type":"expense","date":"2026-06-10","account":"Banco Inter","category":"Food","amount":52.30,"description":"Grocery"}'
