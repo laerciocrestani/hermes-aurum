@@ -1,21 +1,50 @@
-# Aurum — Personal Finance Agent for Hermes
+<p align="center">
+  <img src="avatar.png" alt="Aurum — personal finance agent for Hermes" width="220" />
+</p>
 
-> Event-sourced personal finance for [Hermes Agent](https://github.com/NousResearch/hermes-agent). Records transactions, rebuilds net worth from history, and offers financial mentoring only when you ask.
+<h1 align="center">Aurum</h1>
 
-[![Status](https://img.shields.io/badge/status-MVP-yellow)](ROADMAP.md)
-[![Hermes](https://img.shields.io/badge/Hermes-Agent-blue)](https://github.com/NousResearch/hermes-agent)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+<p align="center">
+  <strong>Personal finance agent for Hermes</strong><br/>
+  Event-sourced ledger · derived net worth · mentoring on demand
+</p>
 
-**Open source** — free to use, fork, and contribute.
+<p align="center">
+  <a href="ROADMAP.md"><img src="https://img.shields.io/badge/status-MVP-yellow" alt="Status" /></a>
+  <a href="https://github.com/NousResearch/hermes-agent"><img src="https://img.shields.io/badge/Hermes-Agent-blue" alt="Hermes" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License" /></a>
+</p>
+
+<p align="center">
+  Open source — free to use, fork, and contribute.
+</p>
+
+---
+
+**Contents:** [What is Aurum](#what-is-aurum) · [Example](#example) · [Architecture](#architecture) · [Categories](#categories) · [Data model](#data-model) · [Scripts](#scripts-direct-usage) · [Roadmap](#not-implemented-yet) · [Installation](#installation)
+
+---
 
 ## What is Aurum?
 
-**Aurum** is a conversational agent for [Hermes Agent](https://github.com/NousResearch/hermes-agent) with two modes:
+**Aurum** is a conversational agent for [Hermes Agent](https://github.com/NousResearch/hermes-agent). You talk to it on **CLI** or **Telegram**; it records your finances and answers from facts — never from guesswork.
 
-| Mode | When | Behavior |
-|------|------|----------|
-| **Financial Operator** (90%) | Logging, balances, reports | Facts only. No opinions. |
-| **Financial Mentor** (10%) | "Can I invest?", "Should I pay off debt?" | Guidance based on your recorded data |
+| Mode | Share | When | Behavior |
+|:----:|:-----:|------|----------|
+| **Operator** | 90% | Logging, balances, reports | Facts only. No opinions. |
+| **Mentor** | 10% | "Can I invest?", "Should I pay off debt?" | Guidance based on your recorded data |
+
+```mermaid
+flowchart LR
+  U(["You"]) -->|expense, balance, report| OP["financial-operator"]
+  U -->|can I, should I| MN["financial-mentor"]
+  OP -->|append events| L[("ledger.jsonl")]
+  MN -->|read first| R["rebuild_state.py"]
+  L --> R
+  R -->|facts| MN
+  OP -->|facts| U
+  MN -->|guidance| U
+```
 
 ### Philosophy
 
@@ -23,203 +52,118 @@
 
 ### Golden rule
 
-- Balances are **never** stored as absolute truth
-- Net worth is **always derived** from the event history
-- The ledger is **append-only** — corrections use an `adjustment` event, never line edits
+| Principle | Meaning |
+|-----------|---------|
+| **No stored balances** | Balances are never absolute truth on disk |
+| **Derived net worth** | Always rebuilt from the event history |
+| **Append-only ledger** | Corrections use `adjustment` events — never line edits |
 
 ## Example
 
-```
-You: I spent R$ 52.30 at the grocery store using Inter.
+<table>
+<tr>
+<td width="50%">
 
-Aurum:
+**You**
+
+```
+I spent R$ 52.30 at the grocery store using Inter.
+```
+
+</td>
+<td width="50%">
+
+**Aurum** *(operator)*
+
+```
 ✓ Recorded.
 ✓ Updated Inter balance.
 ✓ Updated cash flow.
 ✓ Category: Food.
-
-You: How much do I have available?
-Aurum: [runs rebuild_state.py — facts derived from the ledger]
-
-You: Can I invest R$ 5,000 in BTC?
-Aurum: [mentor mode — facts + qualified analysis]
 ```
 
-## Prerequisites
+</td>
+</tr>
+<tr>
+<td>
 
-- [Hermes Agent](https://github.com/NousResearch/hermes-agent) installed (`hermes` CLI)
-- Python 3.10+
-- Model provider API key configured in your Hermes profile
-
-## Installation
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/laerciocrestani/hermes-aurum.git
-cd hermes-aurum
+```
+How much do I have available?
 ```
 
-### 2. Create a Hermes profile
+</td>
+<td>
 
-```bash
-hermes profile create aurum --description "Personal ledger + financial mentoring"
+Runs `rebuild_state.py` — facts from the ledger.
+
+</td>
+</tr>
+<tr>
+<td>
+
+```
+Can I invest R$ 5,000 in BTC?
 ```
 
-### 3. Install skills into the profile
+</td>
+<td>
 
-**Symlink (recommended for development):**
+*(mentor)* Facts + qualified analysis, with caveats.
 
-```bash
-REPO="$(pwd)"
-PROFILE="$HOME/.hermes/profiles/aurum"
-mkdir -p "$PROFILE/skills"
+</td>
+</tr>
+</table>
 
-ln -sf "$REPO/skills/financial-operator" "$PROFILE/skills/financial-operator"
-ln -sf "$REPO/skills/financial-mentor" "$PROFILE/skills/financial-mentor"
-ln -sf "$REPO/references" "$PROFILE/references"
+## Architecture
+
+This repo is a [Hermes profile distribution](https://hermes-agent.nousresearch.com/docs/user-guide/profile-distributions). `hermes profile install` copies it into `~/.hermes/profiles/aurum/` and creates the `aurum` command.
+
+```mermaid
+flowchart TB
+  subgraph repo["GitHub — hermes-aurum"]
+    SOUL["SOUL.md"]
+    CFG["config.yaml"]
+    SK["skills/"]
+    REF["references/"]
+    AV["avatar.png"]
+  end
+
+  subgraph local["Your machine"]
+    PROF["~/.hermes/profiles/aurum/"]
+    ENV[".env — secrets"]
+    LEDGER[("$HERMES_HOME/data/ledger.jsonl")]
+    MEM["memories/ · sessions/"]
+  end
+
+  repo -->|profile install| PROF
+  ENV -.->|never committed| PROF
+  SK --> LEDGER
+  MEM -.->|never overwritten on update| PROF
 ```
 
-**Copy (stable usage):**
+| Component | Role |
+|-----------|------|
+| `SOUL.md` | Persona and behavior rules |
+| `config.yaml` | Model, toolsets, memory settings |
+| `skills/` | `financial-operator` + `financial-mentor` |
+| `references/` | Category list and ledger seed |
+| `avatar.png` | Suggested Telegram bot profile picture |
 
-```bash
-cp -r skills/* ~/.hermes/profiles/aurum/skills/
-cp -r references ~/.hermes/profiles/aurum/
-```
-
-### 4. Customize categories (required)
-
-The operator skill maps your natural language to **exact** category strings in `references/categories.json`. `ledger.py` rejects any category not listed there.
-
-**Edit the file in your native language** so the agent understands how you describe expenses and income:
-
-| Install method | File to edit |
-|----------------|--------------|
-| Symlink (skills) | `references/categories.json` in this repo |
-| Copy | `~/.hermes/profiles/aurum/references/categories.json` |
-
-Default categories are in English. Example for Portuguese:
-
-```json
-{
-  "expense": [
-    "Alimentação",
-    "Transporte",
-    "Moradia",
-    "Saúde",
-    "Lazer",
-    "Educação",
-    "Outros"
-  ],
-  "income": [
-    "Salário",
-    "Freelance",
-    "Investimentos",
-    "Outros"
-  ]
-}
-```
-
-After editing, use those exact names when logging — e.g. `"category": "Alimentação"` in the ledger. The agent will suggest from this list when you do not specify a category.
-
-You can add or remove categories, but keep the `expense` and `income` keys. Restart is not required; the scripts read the file on each append.
-
-### 5. Configure SOUL and model
-
-```bash
-cp docs/SOUL.example.md ~/.hermes/profiles/aurum/SOUL.md
-
-# Set model and temperature (~0.2) in:
-# ~/.hermes/profiles/aurum/config.yaml
-```
-
-### 6. Connect via Telegram (recommended)
-
-Use Telegram to log expenses and ask balances from your phone. Each Hermes profile runs its own bot — the `aurum` profile gets the `aurum` command (same as `hermes -p aurum`).
-
-#### 6.1 Create a bot with BotFather
-
-1. Open Telegram and go to [@BotFather](https://t.me/BotFather)
-2. Send `/newbot`
-3. Choose a **display name** (e.g. `Aurum`)
-4. Choose a **username** ending in `bot` (e.g. `my_aurum_finance_bot`)
-5. Copy the **API token** BotFather returns (format: `123456789:ABCdef...`)
-
-Keep the token secret. If it leaks, revoke it in BotFather with `/revoke`.
-
-Optional — improve the bot profile in BotFather:
-
-| Command | Purpose |
-|---------|---------|
-| `/setdescription` | Short “what can this bot do?” text |
-| `/setabouttext` | Text on the bot profile |
-| `/setcommands` | Command menu (`/help`, `/new`, etc.) |
-
-#### 6.2 Get your Telegram user ID
-
-Hermes only accepts messages from allowed users. Your user ID is a number (not your `@username`).
-
-1. Message [@userinfobot](https://t.me/userinfobot) on Telegram
-2. Copy the numeric ID (e.g. `123456789`)
-
-#### 6.3 Wire the bot to the Aurum profile
-
-**Interactive (recommended):**
-
-```bash
-aurum gateway setup
-```
-
-Select **Telegram**, paste the bot token, and enter your user ID when prompted.
-
-**Manual** — edit `~/.hermes/profiles/aurum/.env`:
-
-```bash
-TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrSTUvwxYZ
-TELEGRAM_ALLOWED_USERS=123456789
-```
-
-For multiple users, comma-separate IDs. Alternatively, use DM pairing: unknown users get a code; approve with `hermes pairing approve telegram <CODE>`.
-
-#### 6.4 Start the gateway
-
-```bash
-aurum gateway start
-```
-
-For a background service (macOS launchd / Linux systemd):
-
-```bash
-aurum gateway install
-aurum gateway start
-aurum gateway status
-```
-
-Send a message to your bot on Telegram — e.g. “I spent R$ 52.30 at the grocery store using Inter.” Aurum uses the **financial-operator** and **financial-mentor** skills from this profile.
-
-Docs: [Hermes Messaging Gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) · [Telegram setup](https://hermes-agent.nousresearch.com/docs/user-guide/messaging/telegram)
-
-### 7. Run
-
-**CLI:**
-
-```bash
-aurum chat
-```
-
-**Telegram:** message your bot after step 6.
-
-On the first recorded transaction, the ledger is created automatically at `$HERMES_HOME/data/ledger.jsonl`.
+| Stored in GitHub | Stays local only |
+|------------------|------------------|
+| Skills, SOUL, config, categories | API keys, bot tokens |
+| | Ledger, memories, sessions |
 
 ## Repository structure
 
 ```
 hermes-aurum/
+├── avatar.png           # bot profile picture (see Installation)
 ├── README.md
 ├── ROADMAP.md
-├── agent.yaml
-├── docs/
-│   └── SOUL.example.md
+├── distribution.yaml
+├── SOUL.md
+├── config.yaml
 ├── references/
 │   ├── categories.json
 │   └── ledger.seed.jsonl
@@ -234,17 +178,24 @@ hermes-aurum/
         └── SKILL.md
 ```
 
-### Where data lives
+## Categories
 
-| Data | Location | Versioned? |
-|------|----------|------------|
-| Skills and scripts | This repository | Yes |
-| SOUL + Hermes config | `~/.hermes/profiles/aurum/` | No (local) |
-| Your ledger | `$HERMES_HOME/data/ledger.jsonl` | **Never commit** |
+The operator maps your language to **exact** strings in `references/categories.json`. `ledger.py` rejects anything not listed.
+
+Edit in your native language. Default is English — Portuguese example:
+
+```json
+{
+  "expense": ["Alimentação", "Transporte", "Moradia", "Saúde", "Lazer", "Educação", "Outros"],
+  "income": ["Salário", "Freelance", "Investimentos", "Outros"]
+}
+```
+
+Keep the `expense` and `income` keys. No restart required.
 
 ## Data model (JSONL)
 
-Each ledger line is an independent JSON event:
+Each line is one independent event — the ledger is rebuilt from this file:
 
 ```jsonl
 {"type":"account","name":"Banco Inter","kind":"asset"}
@@ -255,20 +206,22 @@ Each ledger line is an independent JSON event:
 {"type":"adjustment","date":"2026-06-10","account":"Carteira","amount":15,"reason":"Physical count"}
 ```
 
-Supported types: `account`, `expense`, `income`, `transfer`, `investment`, `liability`, `adjustment`.
+| Type | Purpose |
+|------|---------|
+| `account` | Register a wallet or bank account |
+| `expense` / `income` | Money in or out |
+| `transfer` | Between your accounts |
+| `investment` | Buy/hold an asset |
+| `liability` | Debt tracking |
+| `adjustment` | Physical count correction (signed amount) |
 
 ## Scripts (direct usage)
 
 ```bash
 SCRIPT="skills/financial-operator/scripts"
 
-# Log an expense (auto-inits ledger on first run)
 python3 "$SCRIPT/ledger.py" append '{"type":"expense","date":"2026-06-10","account":"Banco Inter","category":"Food","amount":52.30,"description":"Grocery"}'
-
-# Rebuild financial state
 python3 "$SCRIPT/rebuild_state.py"
-
-# Monthly report
 python3 "$SCRIPT/reports.py" monthly --month 2026-06
 ```
 
@@ -286,6 +239,201 @@ python3 "$SCRIPT/reports.py" monthly --month 2026-06
 ## Not implemented yet
 
 See [ROADMAP.md](ROADMAP.md) for detailed future plans.
+
+---
+
+## Installation
+
+Everything above is **what** Aurum is. Below is **how** to run it — follow the steps in order.
+
+### Overview
+
+```mermaid
+flowchart TD
+  S1["① Install Hermes"]
+  S2["② Gather credentials<br/>OpenRouter + Telegram"]
+  S3["③ Install Aurum profile"]
+  S4["④ aurum setup"]
+  S5["⑤ Customize categories"]
+  S6["⑥ Start gateway"]
+  S7["⑦ Chat"]
+
+  S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7
+
+  style S2 fill:#e8f5e9
+  style S4 fill:#e3f2fd
+  style S7 fill:#fff3e0
+```
+
+> **No clone required.** `hermes profile install` pulls from GitHub. Clone only to develop or edit the repo directly.
+
+### Before you start
+
+| Requirement | Where to get it | Step |
+|-------------|-----------------|------|
+| Hermes Agent | [install script](https://hermes-agent.nousresearch.com) | ① |
+| OpenRouter API key | [openrouter.ai/keys](https://openrouter.ai/keys) | ②a |
+| Telegram bot token | [@BotFather](https://t.me/BotFather) | ②b |
+| Telegram user ID | [@userinfobot](https://t.me/userinfobot) | ②c |
+| Python 3.10+ | System / Hermes installer | — |
+
+---
+
+### ① Install Hermes
+
+```bash
+curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+hermes doctor
+```
+
+---
+
+### ② Gather credentials
+
+Do this **before** `aurum setup` — on phone and browser in parallel.
+
+#### ②a OpenRouter API key
+
+1. Account at [openrouter.ai](https://openrouter.ai)
+2. [openrouter.ai/keys](https://openrouter.ai/keys) → create key → copy `sk-or-v1-...`
+
+#### ②b Telegram bot (BotFather)
+
+1. Open [@BotFather](https://t.me/BotFather)
+2. `/newbot` → display name (e.g. `Aurum`) → username ending in `bot`
+3. Copy the **API token** (`123456789:ABCdef...`)
+
+**Set the avatar** — send `avatar.png` from this repo:
+
+1. `/setuserpic` → select your bot → upload `avatar.png`
+
+Optional polish:
+
+| Command | Purpose |
+|---------|---------|
+| `/setdescription` | “Personal finance ledger on Telegram” |
+| `/setabouttext` | Short profile blurb |
+| `/setcommands` | `/help`, `/new`, etc. |
+
+> Revoke a leaked token: `/revoke` in BotFather.
+
+#### ②c Telegram user ID
+
+1. Message [@userinfobot](https://t.me/userinfobot)
+2. Copy the **numeric** ID (not `@username`)
+
+**Checkpoint** — three values ready:
+
+```bash
+OPENROUTER_API_KEY=sk-or-v1-...
+TELEGRAM_BOT_TOKEN=123456789:ABCdef...
+TELEGRAM_ALLOWED_USERS=123456789
+```
+
+---
+
+### ③ Install the Aurum agent
+
+Creates `~/.hermes/profiles/aurum/` and the `aurum` CLI:
+
+```bash
+hermes profile install github.com/laerciocrestani/hermes-aurum --alias -y
+hermes profile info aurum
+aurum doctor
+```
+
+**Developers** (local clone):
+
+```bash
+git clone https://github.com/laerciocrestani/hermes-aurum.git
+cd hermes-aurum
+hermes profile install "$(pwd)" --alias -y
+```
+
+Updates (ledger and memories preserved):
+
+```bash
+hermes profile update aurum
+```
+
+---
+
+### ④ Configure (`aurum setup`)
+
+```bash
+aurum setup
+```
+
+| Setting | Source |
+|---------|--------|
+| `OPENROUTER_API_KEY` | Step ②a |
+| `TELEGRAM_BOT_TOKEN` | Step ②b |
+| `TELEGRAM_ALLOWED_USERS` | Step ②c |
+
+Or edit `~/.hermes/profiles/aurum/.env` manually.
+
+Default model in `config.yaml`:
+
+```yaml
+model:
+  default: "stepfun/step-3.7-flash:free"
+  provider: openrouter
+```
+
+Change later: `aurum model` · `aurum config set model.default <slug>`
+
+---
+
+### ⑤ Customize categories
+
+Edit `~/.hermes/profiles/aurum/references/categories.json` — see [Categories](#categories).
+
+---
+
+### ⑥ Start the Telegram gateway
+
+```bash
+aurum gateway start
+```
+
+Background service:
+
+```bash
+aurum gateway install && aurum gateway start && aurum gateway status
+```
+
+Skipped Telegram in ④? Run `aurum gateway setup` first.
+
+Docs: [Gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) · [Telegram](https://hermes-agent.nousresearch.com/docs/user-guide/messaging/telegram)
+
+---
+
+### ⑦ Use Aurum
+
+| Channel | Command / action |
+|---------|------------------|
+| **CLI** | `aurum chat` |
+| **Telegram** | Message your bot — e.g. “Gastei R$ 52,30 no mercado pelo Inter” |
+
+First transaction creates `$HERMES_HOME/data/ledger.jsonl` automatically.
+
+---
+
+### Development: symlink workflow
+
+```bash
+REPO="$(pwd)"
+PROFILE="$HOME/.hermes/profiles/aurum"
+mkdir -p "$PROFILE/skills"
+
+ln -sf "$REPO/skills/financial-operator" "$PROFILE/skills/financial-operator"
+ln -sf "$REPO/skills/financial-mentor" "$PROFILE/skills/financial-mentor"
+ln -sf "$REPO/references" "$PROFILE/references"
+cp "$REPO/SOUL.md" "$PROFILE/SOUL.md"
+cp "$REPO/config.yaml" "$PROFILE/config.yaml"
+```
+
+---
 
 ## Contributing
 

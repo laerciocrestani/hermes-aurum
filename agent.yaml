@@ -1,5 +1,0 @@
-name: aurum
-version: 1.0.0
-defaults:
-  currency: BRL
-  date_format: "%Y-%m-%d"
