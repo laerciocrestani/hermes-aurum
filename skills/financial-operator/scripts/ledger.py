@@ -11,10 +11,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from credit_card import BILLING_PROFILES, build_account_registry, is_credit_card
 from paths import get_paths
 
 EVENT_TYPES = {
     "account",
+    "account_config",
     "expense",
     "income",
     "transfer",
@@ -22,6 +24,8 @@ EVENT_TYPES = {
     "liability",
     "adjustment",
 }
+
+CONFIG_FIELDS = ("credit_limit", "closing_day", "due_day", "billing_profile")
 
 
 def append_line(path: Path, line: str) -> None:
@@ -58,6 +62,32 @@ def account_names(events: list[dict[str, Any]]) -> set[str]:
     return {e["name"] for e in events if e.get("type") == "account" and "name" in e}
 
 
+def validate_day_field(value: Any, field_name: str) -> None:
+    if not isinstance(value, int) or not 1 <= value <= 31:
+        raise ValueError(f"{field_name} must be an integer between 1 and 31")
+
+
+def validate_card_config_fields(event: dict[str, Any], *, require_all: bool = False) -> None:
+    present = [key for key in CONFIG_FIELDS if key in event]
+    if require_all and len(present) < len(CONFIG_FIELDS):
+        raise ValueError("liability account requires credit_limit, closing_day, due_day")
+    if not present:
+        return
+
+    if "credit_limit" in event:
+        limit = event["credit_limit"]
+        if not isinstance(limit, (int, float)) or limit <= 0:
+            raise ValueError("credit_limit must be > 0")
+    if "closing_day" in event:
+        validate_day_field(event["closing_day"], "closing_day")
+    if "due_day" in event:
+        validate_day_field(event["due_day"], "due_day")
+    if "billing_profile" in event:
+        profile = event["billing_profile"]
+        if profile not in BILLING_PROFILES:
+            raise ValueError(f"billing_profile must be one of: {', '.join(sorted(BILLING_PROFILES))}")
+
+
 def init_ledger(ledger_path: Path, seed_path: Path) -> None:
     if ledger_path.exists():
         return
@@ -77,6 +107,7 @@ def validate_event(
         raise ValueError(f"Unknown event type: {etype}")
 
     accounts = account_names(events)
+    registry = build_account_registry(events)
 
     if etype == "account":
         name = event.get("name")
@@ -87,6 +118,24 @@ def validate_event(
         kind = event.get("kind")
         if kind not in ("asset", "liability"):
             raise ValueError("account kind must be 'asset' or 'liability'")
+        if kind == "liability":
+            validate_card_config_fields(event)
+        elif any(key in event for key in CONFIG_FIELDS):
+            raise ValueError("card config fields require kind 'liability'")
+        return
+
+    if etype == "account_config":
+        account = event.get("account")
+        if not account:
+            raise ValueError("account_config requires 'account'")
+        if account not in accounts:
+            raise ValueError(f"Account not found: {account}")
+        if registry.get(account) and registry[account].kind != "liability":
+            raise ValueError("account_config only applies to liability accounts")
+        config_present = [key for key in CONFIG_FIELDS if key in event]
+        if not config_present:
+            raise ValueError("account_config requires at least one config field")
+        validate_card_config_fields(event)
         return
 
     if etype in ("expense", "income"):
@@ -95,11 +144,23 @@ def validate_event(
         amount = event.get("amount")
         if account not in accounts:
             raise ValueError(f"Account not found: {account}")
-        pool = categories.get("expense" if etype == "expense" else "income", set())
+        if etype == "expense":
+            pool = categories.get("expense", set())
+        else:
+            pool = categories.get("income", set())
         if category not in pool:
             raise ValueError(f"Invalid category '{category}' for {etype}")
         if not isinstance(amount, (int, float)) or amount <= 0:
             raise ValueError(f"{etype} amount must be > 0")
+        if etype == "expense" and is_credit_card(registry, account):
+            installments = event.get("installments", 1)
+            if not isinstance(installments, int) or installments < 1:
+                raise ValueError("installments must be an integer >= 1")
+            profile = registry[account].billing_profile or "br"
+            if profile == "simple" and installments > 1:
+                raise ValueError("installments > 1 requires billing_profile 'br'")
+            if registry[account].closing_day is None:
+                raise ValueError(f"Credit card '{account}' requires closing_day in account_config")
         return
 
     if etype == "transfer":
@@ -170,8 +231,18 @@ def cmd_list(paths: dict[str, Path], etype: str | None, month: str | None) -> No
 
 def cmd_accounts(paths: dict[str, Path]) -> None:
     events = load_events(paths["ledger"])
-    names = sorted(account_names(events))
-    print(json.dumps({"accounts": names}, ensure_ascii=False, indent=2))
+    registry = build_account_registry(events)
+    result = []
+    for name in sorted(account_names(events)):
+        info = registry.get(name)
+        entry: dict[str, Any] = {"name": name, "kind": info.kind if info else "asset"}
+        if info and info.kind == "liability":
+            for key in CONFIG_FIELDS:
+                value = getattr(info, key, None)
+                if value is not None:
+                    entry[key] = value
+        result.append(entry)
+    print(json.dumps({"accounts": result}, ensure_ascii=False, indent=2))
 
 
 def main() -> int:

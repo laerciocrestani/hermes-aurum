@@ -19,7 +19,8 @@ Items marked as planned are **not implemented** — do not confuse them with the
 - Personal append-only ledger (`ledger.jsonl`)
 - Hermes skills: `financial-operator` + `financial-mentor`
 - Scripts: `ledger.py`, `rebuild_state.py`, `reports.py`
-- Events: account, expense, income, transfer, investment, liability, adjustment
+- Events: account, account_config, expense, income, transfer, investment, liability, adjustment
+- Credit cards: liability accounts with billing cycle (BR parcelamento + simple international profile)
 - Net worth derived from history (balances never persisted)
 - Account (`account` event) and category (`categories.json`) validation on append
 - Atomic writes with `flush()` + `os.fsync()`
@@ -39,6 +40,7 @@ Improvements that **do not change** the event-sourced architecture:
 | Annual report | `reports.py yearly --year 2026` | Medium |
 | CSV export | Export transactions to spreadsheet | Low |
 | Automated tests | pytest suite for ledger, rebuild, reports | High |
+| Credit card alerts | Reminders for closing/due dates from `credit_cards` state | Medium |
 | SOUL variants | Conservative vs direct tone in `docs/SOUL.example.md` | Low |
 
 ---

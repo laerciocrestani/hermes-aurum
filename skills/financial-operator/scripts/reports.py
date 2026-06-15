@@ -10,6 +10,7 @@ from collections import defaultdict
 from datetime import date
 from typing import Any
 
+from credit_card import build_account_registry, expense_report_amounts
 from ledger import load_events
 from paths import get_paths
 
@@ -19,15 +20,21 @@ def filter_month(events: list[dict[str, Any]], month: str) -> list[dict[str, Any
 
 
 def monthly_report(events: list[dict[str, Any]], month: str) -> dict[str, Any]:
-    month_events = filter_month(events, month)
+    registry = build_account_registry(events)
     expenses: dict[str, float] = defaultdict(float)
     incomes: dict[str, float] = defaultdict(float)
+    transaction_count = 0
 
-    for e in month_events:
-        if e.get("type") == "expense":
-            expenses[e["category"]] += float(e["amount"])
-        elif e.get("type") == "income":
+    for e in events:
+        etype = e.get("type")
+        if etype == "expense":
+            for stmt_month, amount in expense_report_amounts(e, registry):
+                if stmt_month == month:
+                    expenses[e["category"]] += amount
+                    transaction_count += 1
+        elif etype == "income" and e.get("date", "").startswith(month):
             incomes[e["category"]] += float(e["amount"])
+            transaction_count += 1
 
     total_expense = sum(expenses.values())
     total_income = sum(incomes.values())
@@ -39,21 +46,28 @@ def monthly_report(events: list[dict[str, Any]], month: str) -> dict[str, Any]:
         "total_expense": round(total_expense, 2),
         "total_income": round(total_income, 2),
         "net_cashflow": round(total_income - total_expense, 2),
-        "transaction_count": len(month_events),
+        "transaction_count": transaction_count,
     }
 
 
 def category_report(events: list[dict[str, Any]], name: str, month: str | None) -> dict[str, Any]:
-    filtered = events
-    if month:
-        filtered = filter_month(filtered, month)
+    registry = build_account_registry(events)
+    matches: list[dict[str, Any]] = []
+    total = 0.0
 
-    matches = [
-        e
-        for e in filtered
-        if e.get("type") in ("expense", "income") and e.get("category") == name
-    ]
-    total = sum(float(e["amount"]) for e in matches)
+    for e in events:
+        if e.get("type") == "expense" and e.get("category") == name:
+            for stmt_month, amount in expense_report_amounts(e, registry):
+                if month is None or stmt_month == month:
+                    entry = dict(e)
+                    entry["statement_month"] = stmt_month
+                    entry["report_amount"] = amount
+                    matches.append(entry)
+                    total += amount
+        elif e.get("type") == "income" and e.get("category") == name:
+            if month is None or e.get("date", "").startswith(month):
+                matches.append(e)
+                total += float(e["amount"])
 
     return {
         "category": name,

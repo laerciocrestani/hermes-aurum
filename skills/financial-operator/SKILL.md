@@ -71,13 +71,69 @@ python3 skills/financial-operator/scripts/rebuild_state.py
 
 | type | fields |
 |------|--------|
-| account | name, kind (asset\|liability) |
-| expense | date, account, category, amount, description? |
+| account | name, kind (asset\|liability), credit_limit?, closing_day?, due_day?, billing_profile? |
+| account_config | account, credit_limit?, closing_day?, due_day?, billing_profile? |
+| expense | date, account, category, amount, installments?, description? |
 | income | date, account, category, amount, description? |
 | transfer | date, from, to, amount, description? |
 | investment | date, account, asset, amount, description? |
 | liability | date, name, amount, monthly_payment?, description? |
 | adjustment | date, account, amount (signed), reason |
+
+## Credit cards
+
+Credit cards are `account` events with `kind: liability` plus billing metadata.
+
+### Billing profiles
+
+| profile | Use |
+|---------|-----|
+| `br` (default) | Brazilian cards — POS installments, closing-day cycle |
+| `simple` | Foreign cards — full charge on statement cycle, no POS installments |
+
+When registering a foreign card, ask country/issuer and set `billing_profile: "simple"`.
+
+### Register a card
+
+```bash
+python3 skills/financial-operator/scripts/ledger.py append \
+  '{"type":"account","name":"Inter Cartão de Crédito","kind":"liability","credit_limit":26800,"closing_day":19,"due_day":25}'
+
+# Or update config later:
+python3 skills/financial-operator/scripts/ledger.py append \
+  '{"type":"account_config","account":"Inter Cartão de Crédito","credit_limit":26800,"closing_day":19,"due_day":25}'
+```
+
+### Spend on card
+
+À vista:
+
+```json
+{"type":"expense","date":"2026-06-15","account":"Inter Cartão de Crédito","category":"Food","amount":80}
+```
+
+Parcelado (BR only):
+
+```json
+{"type":"expense","date":"2026-06-15","account":"Inter Cartão de Crédito","category":"Other","amount":150,"installments":3}
+```
+
+Confirm the derived schedule (e.g. R$ 50 on faturas 06/07/08 when purchase is before closing day 19).
+
+### Pay statement
+
+```json
+{"type":"transfer","date":"2026-06-25","from":"Banco Inter","to":"Inter Cartão de Crédito","amount":50}
+```
+
+### Rules
+
+- Never use `adjustment` for limit, closing day, or due day — use `account_config`.
+- `installments > 1` only on cards with `billing_profile: "br"`.
+- Best purchase day = day after closing → map user "melhor dia de compra" to `closing_day`.
+- Always confirm exact account name via `ledger.py accounts` before append.
+
+---
 
 ## Reports
 
@@ -89,8 +145,9 @@ python3 skills/financial-operator/scripts/reports.py summary
 
 ## Validation (enforced by ledger.py)
 
-- Account must exist (from `account` events) before expense/income/transfer/investment/adjustment
+- Account must exist (from `account` events) before expense/income/transfer/investment/adjustment/account_config
 - Category must exist in `references/categories.json`
+- Credit card expenses require `closing_day` configured on the account
 - Append is atomic (`flush` + `fsync`)
 
 ## Pitfalls
@@ -98,3 +155,4 @@ python3 skills/financial-operator/scripts/reports.py summary
 - Do not edit ledger.jsonl manually — append only
 - Do not skip rebuild_state.py before reporting balances
 - Corrections use `adjustment`, never delete or rewrite lines
+- Credit cards use `account` + `account_config`, not `adjustment` for billing metadata

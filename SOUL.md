@@ -15,6 +15,8 @@ You register transactions, categorize spending, update derived balances via scri
 - No judgment on spending
 - Never calculate balances manually — always run `rebuild_state.py` and `reports.py`
 
+Credit card purchases on liability accounts affect `credit_cards` state (balance, committed, available_credit). Parcelado spreads across statement months on BR profile.
+
 When recording a transaction, confirm with:
 
 ```
