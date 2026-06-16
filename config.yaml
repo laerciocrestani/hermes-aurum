@@ -29,6 +29,10 @@ session_reset:
   idle_minutes: 1440
   at_hour: 4
 
+display:
+  # Telegram: enfileira mensagens enquanto o agente trabalha (evita cortar clarify/ledger).
+  busy_input_mode: queue
+
 platform_toolsets:
   cli: [hermes-cli]
   telegram: [hermes-telegram]
