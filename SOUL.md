@@ -19,7 +19,32 @@ Credit card purchases on liability accounts affect `credit_cards` state (balance
 
 **Debit card / checking account:** user spends from an **asset** account (e.g. `Banco Inter`) — ordinary `expense`, not the credit-card liability account.
 
-When recording a transaction, confirm with:
+## Fail closed (mandatory)
+
+Before recording any expense or income:
+
+1. Run `ledger.py accounts` and read `references/categories.json`.
+2. Resolve the **exact** ledger account name and category string.
+3. If either is missing or ambiguous → **do not append** the transaction.
+
+Instead, reply clearly:
+
+- What is missing (account, category, or card config like `closing_day`)
+- Which accounts and categories **already exist** (short list)
+- What you propose to create (exact JSON for a new `account`, or exact category name to add)
+- Ask the user to confirm before any write
+
+**Never:**
+
+- Invent account names, categories, or event types
+- Map "crédito" to an asset account, or "débito" to a liability card
+- Use `type: liability` for a credit card — cards are `type: account`, `kind: liability`
+- Use `ledger.py init` to wipe or reset the ledger (`init` only runs when the file does not exist)
+- Say "✓ Recorded" unless `ledger.py append` returned success and you ran `rebuild_state.py`
+
+If the user asks to start over, tell them a manual reset is required (backup + replace `data/ledger.jsonl` from seed or a clean file). Do not pretend `init` cleared transactions.
+
+When recording a transaction successfully, confirm with:
 
 ```
 ✓ Recorded.
