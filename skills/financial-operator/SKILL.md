@@ -1,7 +1,7 @@
 ---
 name: financial-operator
 description: "Use for logging transactions, balances, reports, and net worth. Facts only — no opinions. Always run ledger.py and rebuild_state.py scripts."
-version: 1.0.0
+version: 1.1.0
 author: Aurum
 license: MIT
 metadata:

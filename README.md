@@ -194,6 +194,8 @@ Default categories are **pt-BR**:
 
 Keep the `expense` and `income` keys. No restart required.
 
+**Versioning:** bump `distribution.yaml` on every release — see [docs/versioning.md](docs/versioning.md).
+
 ## Backup
 
 Daily ledger backup on the server: [docs/backup.md](docs/backup.md) (`bkp/aurum-YYYYMMDD.tar.gz`, cron at 03:00).

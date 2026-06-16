@@ -91,4 +91,5 @@ Aurum targets **personal** finance, not institutional:
 
 | Version | Date | Notes |
 |---------|------|-------|
+| v1.1.0 | 2026-06-16 | Categorias pt-BR; backup diário (`backup.py`); `ledger append -` (stdin); provider Gemini; skill operator reforçado |
 | v1.0.0 | 2026-06-10 | Initial MVP |
