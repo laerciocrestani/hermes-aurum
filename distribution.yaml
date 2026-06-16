@@ -6,8 +6,8 @@ author: "Laercio Crestani"
 license: MIT
 
 env_requires:
-  - name: OPENROUTER_API_KEY
-    description: "OpenRouter API key (required for stepfun/step-3.7-flash:free)"
+  - name: GOOGLE_API_KEY
+    description: "Google AI Studio API key (Gemini). Also accepts GEMINI_API_KEY. Can live in ~/.hermes/.env."
     required: true
   - name: TELEGRAM_BOT_TOKEN
     description: "Bot token from @BotFather (only if using Telegram gateway)"

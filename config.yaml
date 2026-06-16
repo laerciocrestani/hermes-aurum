@@ -2,9 +2,11 @@
 # Secrets (API keys, bot tokens) go in ~/.hermes/profiles/aurum/.env
 
 model:
-  # Free tier on OpenRouter. Override with: aurum config set model.default <slug>
-  default: "stepfun/step-3.7-flash:free"
-  provider: openrouter
+  # Day-to-day Telegram: reliable tool calling for ledger scripts.
+  # Override with: aurum config set model.default <slug>
+  default: gemini-2.5-flash
+  provider: gemini
+  base_url: https://generativelanguage.googleapis.com/v1beta
 
 agent:
   max_turns: 30

@@ -251,7 +251,7 @@ Everything above is **what** Aurum is. Below is **how** to run it — follow the
 ```mermaid
 flowchart TD
   S1["① Install Hermes"]
-  S2["② Gather credentials<br/>OpenRouter + Telegram"]
+  S2["② Gather credentials<br/>Google Gemini + Telegram"]
   S3["③ Install Aurum profile"]
   S4["④ aurum setup"]
   S5["⑤ Customize categories"]
@@ -272,7 +272,7 @@ flowchart TD
 | Requirement | Where to get it | Step |
 |-------------|-----------------|------|
 | Hermes Agent | [install script](https://hermes-agent.nousresearch.com) | ① |
-| OpenRouter API key | [openrouter.ai/keys](https://openrouter.ai/keys) | ②a |
+| Google Gemini API key | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | ②a |
 | Telegram bot token | [@BotFather](https://t.me/BotFather) | ②b |
 | Telegram user ID | [@userinfobot](https://t.me/userinfobot) | ②c |
 | Python 3.10+ | System / Hermes installer | — |
@@ -292,10 +292,12 @@ hermes doctor
 
 Do this **before** `aurum setup` — on phone and browser in parallel.
 
-#### ②a OpenRouter API key
+#### ②a Google Gemini API key
 
-1. Account at [openrouter.ai](https://openrouter.ai)
-2. [openrouter.ai/keys](https://openrouter.ai/keys) → create key → copy `sk-or-v1-...`
+1. Sign in at [Google AI Studio](https://aistudio.google.com)
+2. [Create an API key](https://aistudio.google.com/apikey) → copy the key
+
+Free tier covers Flash / Flash-Lite for light use; enable billing on a separate GCP project for daily Telegram use.
 
 #### ②b Telegram bot (BotFather)
 
@@ -325,7 +327,7 @@ Optional polish:
 **Checkpoint** — three values ready:
 
 ```bash
-OPENROUTER_API_KEY=sk-or-v1-...
+GOOGLE_API_KEY=...
 TELEGRAM_BOT_TOKEN=123456789:ABCdef...
 TELEGRAM_ALLOWED_USERS=123456789
 ```
@@ -366,7 +368,7 @@ aurum setup
 
 | Setting | Source |
 |---------|--------|
-| `OPENROUTER_API_KEY` | Step ②a |
+| `GOOGLE_API_KEY` | Step ②a (or shared `~/.hermes/.env`) |
 | `TELEGRAM_BOT_TOKEN` | Step ②b |
 | `TELEGRAM_ALLOWED_USERS` | Step ②c |
 
@@ -376,8 +378,9 @@ Default model in `config.yaml`:
 
 ```yaml
 model:
-  default: "stepfun/step-3.7-flash:free"
-  provider: openrouter
+  default: gemini-2.5-flash
+  provider: gemini
+  base_url: https://generativelanguage.googleapis.com/v1beta
 ```
 
 Change later: `aurum model` · `aurum config set model.default <slug>`
