@@ -91,6 +91,7 @@ Aurum targets **personal** finance, not institutional:
 
 | Version | Date | Notes |
 |---------|------|-------|
+| v1.2.1 | 2026-06-16 | Gemini Flash Lite primário + Flash fallback (menos 503 no Telegram) |
 | v1.2.0 | 2026-06-16 | Fail-closed: validar conta/categoria antes de append; sugerir criação; proibir init/reset falso |
 | v1.1.0 | 2026-06-16 | Categorias pt-BR; backup diário (`backup.py`); `ledger append -` (stdin); provider Gemini; skill operator reforçado |
 | v1.0.0 | 2026-06-10 | Initial MVP |

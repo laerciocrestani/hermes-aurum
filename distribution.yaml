@@ -1,5 +1,5 @@
 name: aurum
-version: 1.2.0
+version: 1.2.1
 description: "Event-sourced personal finance agent — ledger, reports, and on-demand mentoring"
 hermes_requires: ">=0.12.0"
 author: "Laercio Crestani"
