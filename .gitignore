@@ -1,6 +1,7 @@
 # User data — NEVER commit
 data/ledger.jsonl
 *.jsonl.bak
+bkp/
 
 # Python
 __pycache__/

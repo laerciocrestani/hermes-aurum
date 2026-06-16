@@ -17,6 +17,8 @@ You register transactions, categorize spending, update derived balances via scri
 
 Credit card purchases on liability accounts affect `credit_cards` state (balance, committed, available_credit). Parcelado spreads across statement months on BR profile.
 
+**Debit card / checking account:** user spends from an **asset** account (e.g. `Banco Inter`) — ordinary `expense`, not the credit-card liability account.
+
 When recording a transaction, confirm with:
 
 ```

@@ -35,28 +35,39 @@ All scripts live next to this skill:
 skills/financial-operator/scripts/
 ├── ledger.py
 ├── rebuild_state.py
-└── reports.py
+├── reports.py
+└── backup.py
 ```
+
+Daily backup: see [docs/backup.md](../../docs/backup.md).
 
 Run from repo root or any cwd — paths resolve via `__file__`.
 
 ## Procedure
 
-1. Interpret user intent → build JSON event
-2. If category missing, suggest from `references/categories.json`
-3. Append event (auto-inits ledger on first write):
+1. Run `ledger.py accounts` — use **exact** account names from output
+2. Interpret user intent → build JSON event (see mappings below)
+3. If category missing, pick from `references/categories.json` (exact string)
+4. Append event — **prefer stdin** (avoids shell quoting bugs in Telegram/terminal):
 
 ```bash
-python3 skills/financial-operator/scripts/ledger.py append '<json>'
+printf '%s' '{"type":"expense","date":"2026-06-16","account":"Banco Inter","category":"Alimentação","amount":0.85,"description":"mercado"}' \
+  | python3 skills/financial-operator/scripts/ledger.py append -
 ```
 
-4. Rebuild state:
+Fallback (single-quoted JSON, one argument only):
+
+```bash
+python3 skills/financial-operator/scripts/ledger.py append '{"type":"expense","date":"2026-06-16","account":"Banco Inter","category":"Alimentação","amount":0.85}'
+```
+
+5. Rebuild state:
 
 ```bash
 python3 skills/financial-operator/scripts/rebuild_state.py
 ```
 
-5. Reply with confirmation (no opinions):
+6. Reply with confirmation (no opinions):
 
 ```
 ✓ Recorded.
@@ -66,6 +77,24 @@ python3 skills/financial-operator/scripts/rebuild_state.py
 ```
 
 **Do not call `init` manually** — `append` handles first-time setup.
+
+## Language → ledger mappings
+
+| User says | Ledger field |
+|-----------|--------------|
+| débito, conta corrente, cartão de débito | `account` = asset (e.g. `Banco Inter`) — **not** the credit card liability |
+| crédito, cartão de crédito, fatura | `account` = liability card (e.g. `Inter Cartão de Crédito`) |
+| mercado, supermercado, alimentação | `Alimentação` (ou string exata em `categories.json`) |
+| 85 centavos, R$ 0,85 | `"amount": 0.85` |
+
+**Never invent categories** like `Compras` unless they exist in `references/categories.json`.
+
+## Terminal rules (critical)
+
+- **Never modify** `ledger.py` or other scripts — only call them
+- If `append` fails with `Invalid JSON`, switch to **stdin** (`append -`) immediately; do not retry shell quoting more than once
+- Pass JSON as **one** argument or via stdin — no unescaped double quotes inside double-quoted strings
+- Max **3** terminal attempts per transaction; then report the exact JSON you would append and ask the user to confirm account/category names
 
 ## Event Types
 
@@ -109,7 +138,7 @@ python3 skills/financial-operator/scripts/ledger.py append \
 À vista:
 
 ```json
-{"type":"expense","date":"2026-06-15","account":"Inter Cartão de Crédito","category":"Food","amount":80}
+{"type":"expense","date":"2026-06-15","account":"Inter Cartão de Crédito","category":"Alimentação","amount":80}
 ```
 
 Parcelado (BR only):
@@ -139,7 +168,7 @@ Confirm the derived schedule (e.g. R$ 50 on faturas 06/07/08 when purchase is be
 
 ```bash
 python3 skills/financial-operator/scripts/reports.py monthly --month 2026-06
-python3 skills/financial-operator/scripts/reports.py category --name Food --month 2026-06
+python3 skills/financial-operator/scripts/reports.py category --name Alimentação --month 2026-06
 python3 skills/financial-operator/scripts/reports.py summary
 ```
 

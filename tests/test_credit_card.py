@@ -83,7 +83,7 @@ class LedgerValidationTests(unittest.TestCase):
             "type": "expense",
             "date": "2026-06-15",
             "account": "Inter Cartão de Crédito",
-            "category": "Food",
+            "category": "Alimentação",
             "amount": 150,
             "installments": 3,
         }
@@ -98,7 +98,7 @@ class LedgerValidationTests(unittest.TestCase):
             "type": "expense",
             "date": "2026-06-15",
             "account": "Card",
-            "category": "Food",
+            "category": "Alimentação",
             "amount": 50,
         }
         with self.assertRaisesRegex(ValueError, "closing_day"):
@@ -157,7 +157,7 @@ class RebuildStateTests(unittest.TestCase):
                 "type": "expense",
                 "date": "2026-06-10",
                 "account": "Banco Inter",
-                "category": "Food",
+                "category": "Alimentação",
                 "amount": 40,
             }
         ]

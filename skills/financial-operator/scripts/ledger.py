@@ -206,6 +206,16 @@ def cmd_init(paths: dict[str, Path]) -> None:
     print(json.dumps({"status": "ok", "ledger": str(paths["ledger"])}))
 
 
+def read_append_json(arg: str) -> str:
+    """Read JSON from arg or stdin when arg is '-'."""
+    if arg == "-":
+        raw = sys.stdin.read()
+        if not raw.strip():
+            raise ValueError("No JSON on stdin")
+        return raw
+    return arg
+
+
 def cmd_append(paths: dict[str, Path], raw_json: str) -> None:
     init_ledger(paths["ledger"], paths["seed"])
     try:
@@ -251,7 +261,10 @@ def main() -> int:
 
     sub.add_parser("init")
     p_append = sub.add_parser("append")
-    p_append.add_argument("json", help="JSON event string")
+    p_append.add_argument(
+        "json",
+        help='JSON event string, or "-" to read one JSON object from stdin',
+    )
 
     p_list = sub.add_parser("list")
     p_list.add_argument("--type", dest="etype")
@@ -266,7 +279,7 @@ def main() -> int:
         if args.command == "init":
             cmd_init(paths)
         elif args.command == "append":
-            cmd_append(paths, args.json)
+            cmd_append(paths, read_append_json(args.json))
         elif args.command == "list":
             cmd_list(paths, args.etype, args.month)
         elif args.command == "accounts":

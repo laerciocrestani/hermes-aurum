@@ -1,17 +1,17 @@
 {
   "expense": [
-    "Food",
-    "Transport",
-    "Housing",
-    "Health",
-    "Leisure",
-    "Education",
-    "Other"
+    "Alimentação",
+    "Transporte",
+    "Moradia",
+    "Saúde",
+    "Lazer",
+    "Educação",
+    "Outros"
   ],
   "income": [
-    "Salary",
+    "Salário",
     "Freelance",
-    "Investments",
-    "Other"
+    "Investimentos",
+    "Outros"
   ]
 }

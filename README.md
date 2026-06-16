@@ -79,7 +79,7 @@ I spent R$ 52.30 at the grocery store using Inter.
 ✓ Recorded.
 ✓ Updated Inter balance.
 ✓ Updated cash flow.
-✓ Category: Food.
+✓ Category: Alimentação.
 ```
 
 </td>
@@ -173,7 +173,8 @@ hermes-aurum/
     │   └── scripts/
     │       ├── ledger.py
     │       ├── rebuild_state.py
-    │       └── reports.py
+    │       ├── reports.py
+    │       └── backup.py
     └── financial-mentor/
         └── SKILL.md
 ```
@@ -182,7 +183,7 @@ hermes-aurum/
 
 The operator maps your language to **exact** strings in `references/categories.json`. `ledger.py` rejects anything not listed.
 
-Edit in your native language. Default is English — Portuguese example:
+Default categories are **pt-BR**:
 
 ```json
 {
@@ -193,14 +194,18 @@ Edit in your native language. Default is English — Portuguese example:
 
 Keep the `expense` and `income` keys. No restart required.
 
+## Backup
+
+Daily ledger backup on the server: [docs/backup.md](docs/backup.md) (`bkp/aurum-YYYYMMDD.tar.gz`, cron at 03:00).
+
 ## Data model (JSONL)
 
 Each line is one independent event — the ledger is rebuilt from this file:
 
 ```jsonl
 {"type":"account","name":"Banco Inter","kind":"asset"}
-{"type":"expense","date":"2026-06-10","account":"Banco Inter","category":"Food","amount":52.30,"description":"Grocery"}
-{"type":"income","date":"2026-06-10","account":"Banco Inter","category":"Salary","amount":5000}
+{"type":"expense","date":"2026-06-10","account":"Banco Inter","category":"Alimentação","amount":52.30,"description":"Mercado"}
+{"type":"income","date":"2026-06-10","account":"Banco Inter","category":"Salário","amount":5000}
 {"type":"transfer","date":"2026-06-10","from":"Banco Inter","to":"Carteira","amount":100}
 {"type":"investment","date":"2026-06-10","account":"Banco Inter","asset":"BTC","amount":500}
 {"type":"adjustment","date":"2026-06-10","account":"Carteira","amount":15,"reason":"Physical count"}
@@ -220,7 +225,7 @@ Each line is one independent event — the ledger is rebuilt from this file:
 ```bash
 SCRIPT="skills/financial-operator/scripts"
 
-python3 "$SCRIPT/ledger.py" append '{"type":"expense","date":"2026-06-10","account":"Banco Inter","category":"Food","amount":52.30,"description":"Grocery"}'
+python3 "$SCRIPT/ledger.py" append '{"type":"expense","date":"2026-06-10","account":"Banco Inter","category":"Alimentação","amount":52.30,"description":"Mercado"}'
 python3 "$SCRIPT/rebuild_state.py"
 python3 "$SCRIPT/reports.py" monthly --month 2026-06
 ```
