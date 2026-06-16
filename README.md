@@ -385,9 +385,13 @@ Default model in `config.yaml`:
 
 ```yaml
 model:
-  default: gemini-2.5-flash
+  default: gemini-2.5-flash-lite
   provider: gemini
   base_url: https://generativelanguage.googleapis.com/v1beta
+
+fallback_providers:
+  - provider: gemini
+    model: gemini-2.5-flash
 ```
 
 Change later: `aurum model` · `aurum config set model.default <slug>`

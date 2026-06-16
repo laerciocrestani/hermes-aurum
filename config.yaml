@@ -2,11 +2,15 @@
 # Secrets (API keys, bot tokens) go in ~/.hermes/profiles/aurum/.env
 
 model:
-  # Day-to-day Telegram: reliable tool calling for ledger scripts.
+  # Primary: lighter model (fewer 503s). Fallback: flash when lite is overloaded.
   # Override with: aurum config set model.default <slug>
-  default: gemini-2.5-flash
+  default: gemini-2.5-flash-lite
   provider: gemini
   base_url: https://generativelanguage.googleapis.com/v1beta
+
+fallback_providers:
+  - provider: gemini
+    model: gemini-2.5-flash
 
 agent:
   max_turns: 30
