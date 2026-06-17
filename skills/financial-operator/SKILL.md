@@ -1,7 +1,7 @@
 ---
 name: financial-operator
 description: "Use para registrar transações e consultas somente leitura (despesas do mês, saldos, patrimônio). Apenas fatos — sem opiniões. Use SOMENTE a tool terminal com python3 — não existe tool reports nem financial_operator."
-version: 1.3.6
+version: 1.3.7
 author: Aurum
 license: MIT
 metadata:
@@ -73,6 +73,7 @@ Leia o JSON do stdout e responda em português.
 | Resumo do mês | `.../aurum-run report summary` |
 | Saldo / patrimônio | `.../aurum-run state` |
 | Listar contas | `.../aurum-run ledger accounts` |
+| Listar categorias | `.../aurum-run ledger categories` |
 | Gravar despesa/receita | `.../aurum-run ledger append -` (stdin) — **nunca** `aurum-run append` sem `ledger` |
 
 O `aurum-run` define `HERMES_HOME` na raiz do perfil automaticamente.
@@ -170,26 +171,25 @@ Fluxo obrigatório: **preflight** → **`aurum-run ledger append -`** → **`aur
 
 Prefixo: `$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run`
 
-### Exemplo — "Gastei R$ 0,80 no mercado pelo Inter no débito"
+### Exemplo — "Gastei R$ 50 no mercado pelo Inter no débito"
 
-**Mercado** é o **lugar** (vai em `description`), **não** é categoria. Categoria válida: **`Alimentação`**.
+**Mercado** é o **lugar** (vai em `description`), **não** é categoria. Categoria: **`Alimentação`**.
 
-1. Preflight (se ainda não fez nesta conversa):
+Quando o usuário informa **valor + lugar (mercado/supermercado) + conta + débito/crédito**, **registre direto** após o preflight — **não** peça confirmação redundante.
+
+1. Preflight:
 
 ```bash
 $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger accounts
+$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger categories
 ```
 
-2. Se conta `Banco Inter` existe e usuário disse **débito** → asset `Banco Inter`. Proponha em uma mensagem:
+2. Débito + conta `Banco Inter` (asset) → use `account`: `Banco Inter`.
 
-```
-Registro R$ 0,80 — Banco Inter (débito), categoria Alimentação, descrição Mercado?
-```
-
-3. Após confirmação (ou se usuário já disse "mercado" claramente como compra de comida), **execute** sem pedir de novo qual comando usar:
+3. **Execute** o append (data de hoje):
 
 ```bash
-printf '%s' '{"type":"expense","date":"2026-06-17","account":"Banco Inter","category":"Alimentação","amount":0.80,"description":"Mercado"}' \
+printf '%s' '{"type":"expense","date":"2026-06-17","account":"Banco Inter","category":"Alimentação","amount":50,"description":"Mercado"}' \
   | $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger append -
 ```
 
@@ -199,16 +199,14 @@ printf '%s' '{"type":"expense","date":"2026-06-17","account":"Banco Inter","cate
 $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run state
 ```
 
-5. Confirmar:
+5. Confirmar ao usuário:
 
 ```
-✓ Registrado.
+✓ Registrado R$ 50,00 — Banco Inter (débito), Alimentação, Mercado.
 ✓ Saldo de Banco Inter atualizado.
-✓ Fluxo de caixa atualizado.
-✓ Categoria: Alimentação.
 ```
 
-**Nunca** use `"category":"Mercado"` — não existe em `categories.json`. **Nunca** pergunte se a categoria é "Mercado"; pergunte se **`Alimentação`** está correta.
+**Nunca** use `"category":"Mercado"`. **Nunca** use `cat references/categories.json` — o cwd do gateway não é o perfil; use **`aurum-run ledger categories`**.
 
 ---
 
@@ -220,25 +218,24 @@ Preflight aplica **somente** ao **gravar** `expense` ou `income`. **Não** se ap
 
 ```bash
 $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger accounts
-```
-
-Ler categorias (strings exatas):
-
-```bash
-cat references/categories.json
+$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger categories
 ```
 
 | Verificação | Se falhar |
 |-------------|-----------|
 | Nome da conta existe na saída de `accounts` | **Pare.** Proponha um evento `account` (veja abaixo). Peça confirmação do nome, tipo (asset vs liability) e campos do cartão se for crédito. |
-| String da categoria existe em `categories.json` em `expense` ou `income` | **Pare.** Proponha adicionar a categoria em `references/categories.json` **ou** pergunte qual categoria existente usar. Não chute. |
+| String da categoria existe na saída de `categories` (lista `expense` ou `income`) | **Pare.** Proponha adicionar a categoria em `references/categories.json` **ou** pergunte qual categoria existente usar. Não chute. |
 | Cartão de crédito (`kind: liability`) tem `closing_day` (e limite/vencimento se novo) | **Pare.** Proponha `account` + `account_config` primeiro. |
 | Usuário disse "crédito" / cartão | Conta deve ser cartão **liability** — não um asset como `Banco Inter`. |
 | Usuário disse "débito" / conta corrente | Conta deve ser **asset** — não a conta do cartão de crédito. |
 
-Somente após conta e categoria **confirmadas** → `aurum-run ledger append -` → `aurum-run state`.
+Somente após conta e categoria **validadas no preflight** → `aurum-run ledger append -` → `aurum-run state`.
 
-**Nunca faça append** esperando que `ledger.py` aceite. **Nunca** mapeie "pensão" → `Moradia` ou "mercado" → `Alimentação` sem confirmação do usuário quando ele usou outra palavra.
+**Mercado/supermercado/feira** com valor e forma de pagamento claros → categoria **`Alimentação`** e `description` com o lugar — **registre sem pedir confirmação**.
+
+**Pensão, aluguel** e termos ambíguos → pergunte qual categoria existente usar ou se deve criar uma nova.
+
+**Nunca** mapeie termos ambíguos (ex.: "pensão" → `Moradia`) sem confirmação do usuário.
 
 ### Exemplo — conta e categoria ausentes
 
@@ -290,7 +287,7 @@ Não adicione categorias silenciosamente sem aprovação do usuário.
 
 ## Procedimento (quando o preflight passar)
 
-1. Preflight: `accounts` + `categories.json` (acima)
+1. Preflight: `ledger accounts` + `ledger categories` (caminho absoluto via `aurum-run`)
 2. Monte o JSON com strings **exatas** de conta e categoria
 3. Append — **prefira stdin**:
 
@@ -323,7 +320,7 @@ $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run state
 |-------------|-----------------|
 | débito, conta corrente, cartão de débito | `account` = **asset** (nome exato de `accounts`) |
 | crédito, cartão de crédito, fatura | `account` = cartão **liability** (nome exato de `accounts`) |
-| mercado, supermercado, no mercado | **Não** é categoria — use `category`: **Alimentação**, `description`: mercado/supermercado/Mercado |
+| mercado, supermercado, no mercado | **Não** é categoria — use `category`: **Alimentação**, `description`: mercado/supermercado/Mercado; **registre direto** se valor e conta estiverem claros |
 | pensão, aluguel | Mapear só para categoria existente ou nova após confirmação |
 | 85 centavos, R$ 0,85 | `"amount": 0.85` |
 

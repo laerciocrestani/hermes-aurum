@@ -298,6 +298,18 @@ def cmd_accounts(paths: dict[str, Path]) -> None:
     print(json.dumps({"accounts": result}, ensure_ascii=False, indent=2))
 
 
+def cmd_categories(paths: dict[str, Path]) -> None:
+    with open(paths["categories"], encoding="utf-8") as f:
+        data = json.load(f)
+    print(
+        json.dumps(
+            {"categories": data, "path": str(paths["categories"])},
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+
 def cmd_check(paths: dict[str, Path]) -> None:
     from paths import resolve_ledger_path, resolve_profile_root, resolve_hermes_home, find_references_dir
 
@@ -445,6 +457,7 @@ def main() -> int:
     p_list.add_argument("--month")
 
     sub.add_parser("accounts")
+    sub.add_parser("categories")
 
     sub.add_parser("check")
     p_repair = sub.add_parser("repair")
@@ -473,6 +486,8 @@ def main() -> int:
             cmd_list(paths, args.etype, args.month)
         elif args.command == "accounts":
             cmd_accounts(paths)
+        elif args.command == "categories":
+            cmd_categories(paths)
         elif args.command == "check":
             cmd_check(paths)
         elif args.command == "repair":

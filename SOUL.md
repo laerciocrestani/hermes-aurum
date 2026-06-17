@@ -50,7 +50,7 @@ Quando o usuário **pergunta** (não registra) — use a tool **`terminal`** ime
 
 Antes de registrar qualquer despesa ou receita:
 
-1. Execute `ledger.py accounts` e leia `references/categories.json`.
+1. Execute `aurum-run ledger accounts` e `aurum-run ledger categories` (caminho absoluto — nunca `cat references/categories.json`).
 2. Resolva o nome **exato** da conta e a string da categoria no ledger.
 3. Se faltar ou estiver ambíguo → **não faça append** da transação.
 
