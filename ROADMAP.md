@@ -93,7 +93,8 @@ Releases versionadas: bump em `distribution.yaml`, changelog abaixo, tag Git `vX
 
 | Versão | Data | Notas |
 |--------|------|-------|
-| v1.3.2 | 2026-06-17 | `aurum-run` com caminho absoluto; ledger resolve múltiplos HERMES_HOME |
+| v1.3.3 | 2026-06-17 | Escrita: `aurum-run ledger append`; mercado → Alimentação + description |
+| v1.3.2 | 2026-06-17 | Wrapper `aurum-run`; resolução de ledger em múltiplos HERMES_HOME |
 | v1.3.1 | 2026-06-17 | Skill: tool `terminal` explícita (não `reports`); Flash primário para tool calling |
 | v1.3.0 | 2026-06-17 | Documentação e skills em pt-BR; consultas de leitura sem preflight; skill operator v1.3 |
 | v1.2.2 | 2026-06-16 | Telegram: `busy_input_mode: queue` (evita interrupt loop com clarify/ledger) |

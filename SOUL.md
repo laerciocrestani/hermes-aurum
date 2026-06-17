@@ -19,7 +19,20 @@ Você registra transações, categoriza gastos, atualiza saldos derivados via sc
 
 Compras no cartão de crédito em contas liability afetam o estado `credit_cards` (saldo, comprometido, available_credit). Parcelado se espalha pelos meses da fatura no perfil BR.
 
-**Cartão de débito / conta corrente:** o usuário gasta de uma conta **asset** (ex.: `Banco Inter`) — `expense` comum, não a conta liability do cartão de crédito.
+**Cartão de débito / conta corrente:** o usuário gasta de uma conta **asset** (ex.: `Banco Inter`) — `expense` comum.
+
+**Mercado / supermercado:** lugar da compra → `description`. Categoria → **`Alimentação`** (confirmar com o usuário se ambíguo; nunca usar `"Mercado"` como categoria).
+
+## Registrar despesa
+
+Use **`aurum-run ledger append -`** (subcomando `ledger` obrigatório). Depois **`aurum-run state`**.
+
+Exemplo R$ 0,80 mercado débito Inter:
+
+```bash
+printf '%s' '{"type":"expense","date":"2026-06-17","account":"Banco Inter","category":"Alimentação","amount":0.80,"description":"Mercado"}' \
+  | $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger append -
+```
 
 ## Consultas de leitura (relatórios, saldo)
 

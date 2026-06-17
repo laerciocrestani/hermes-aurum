@@ -1,7 +1,7 @@
 ---
 name: financial-operator
 description: "Use para registrar transações e consultas somente leitura (despesas do mês, saldos, patrimônio). Apenas fatos — sem opiniões. Use SOMENTE a tool terminal com python3 — não existe tool reports nem financial_operator."
-version: 1.3.4
+version: 1.3.5
 author: Aurum
 license: MIT
 metadata:
@@ -73,7 +73,7 @@ Leia o JSON do stdout e responda em português.
 | Resumo do mês | `.../aurum-run report summary` |
 | Saldo / patrimônio | `.../aurum-run state` |
 | Listar contas | `.../aurum-run ledger accounts` |
-| Gravar despesa | `.../aurum-run ledger append -` (stdin) |
+| Gravar despesa/receita | `.../aurum-run ledger append -` (stdin) — **nunca** `aurum-run append` sem `ledger` |
 
 O `aurum-run` define `HERMES_HOME` na raiz do perfil automaticamente.
 
@@ -157,7 +157,62 @@ $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run report 
 
 ---
 
-## Fail closed — preflight antes de cada despesa/receita (somente escrita)
+## Registrar despesa ou receita (escrita)
+
+Fluxo obrigatório: **preflight** → **`aurum-run ledger append -`** → **`aurum-run state`**.
+
+### Sintaxe do `aurum-run` para gravar
+
+| Certo | Errado |
+|-------|--------|
+| `aurum-run ledger append -` | Pedir ao usuário "devo usar ledger?" — **corrija e execute** |
+| `aurum-run append -` | Aceito (atalho), mas prefira `ledger append` |
+
+Prefixo: `$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run`
+
+### Exemplo — "Gastei R$ 0,80 no mercado pelo Inter no débito"
+
+**Mercado** é o **lugar** (vai em `description`), **não** é categoria. Categoria válida: **`Alimentação`**.
+
+1. Preflight (se ainda não fez nesta conversa):
+
+```bash
+$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger accounts
+```
+
+2. Se conta `Banco Inter` existe e usuário disse **débito** → asset `Banco Inter`. Proponha em uma mensagem:
+
+```
+Registro R$ 0,80 — Banco Inter (débito), categoria Alimentação, descrição Mercado?
+```
+
+3. Após confirmação (ou se usuário já disse "mercado" claramente como compra de comida), **execute** sem pedir de novo qual comando usar:
+
+```bash
+printf '%s' '{"type":"expense","date":"2026-06-17","account":"Banco Inter","category":"Alimentação","amount":0.80,"description":"Mercado"}' \
+  | $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger append -
+```
+
+4. Reconstruir estado:
+
+```bash
+$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run state
+```
+
+5. Confirmar:
+
+```
+✓ Registrado.
+✓ Saldo de Banco Inter atualizado.
+✓ Fluxo de caixa atualizado.
+✓ Categoria: Alimentação.
+```
+
+**Nunca** use `"category":"Mercado"` — não existe em `categories.json`. **Nunca** pergunte se a categoria é "Mercado"; pergunte se **`Alimentação`** está correta.
+
+---
+
+## Fail closed — preflight (escrita)
 
 Preflight aplica **somente** ao **gravar** `expense` ou `income`. **Não** se aplica a relatórios nem consultas de saldo.
 
@@ -181,7 +236,7 @@ cat references/categories.json
 | Usuário disse "crédito" / cartão | Conta deve ser cartão **liability** — não um asset como `Banco Inter`. |
 | Usuário disse "débito" / conta corrente | Conta deve ser **asset** — não a conta do cartão de crédito. |
 
-Somente após conta e categoria **confirmadas** → `append` expense/income → `rebuild_state.py`.
+Somente após conta e categoria **confirmadas** → `aurum-run ledger append -` → `aurum-run state`.
 
 **Nunca faça append** esperando que `ledger.py` aceite. **Nunca** mapeie "pensão" → `Moradia` ou "mercado" → `Alimentação` sem confirmação do usuário quando ele usou outra palavra.
 
@@ -268,7 +323,7 @@ $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run state
 |-------------|-----------------|
 | débito, conta corrente, cartão de débito | `account` = **asset** (nome exato de `accounts`) |
 | crédito, cartão de crédito, fatura | `account` = cartão **liability** (nome exato de `accounts`) |
-| mercado, supermercado | Mapear para `Alimentação` só se o usuário concordar ou disser alimentação |
+| mercado, supermercado, no mercado | **Não** é categoria — use `category`: **Alimentação**, `description`: mercado/supermercado/Mercado |
 | pensão, aluguel | Mapear só para categoria existente ou nova após confirmação |
 | 85 centavos, R$ 0,85 | `"amount": 0.85` |
 
@@ -277,7 +332,8 @@ $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run state
 - **Sempre** use a tool Hermes **`terminal`** — nunca `reports`, `ledger`, `rebuild_state` como nome de tool
 - **Nunca modifique** `ledger.py` ou outros scripts — apenas execute-os via `terminal`
 - **Nunca use `init`** para limpar transações
-- Para consultas de **leitura**: uma chamada `terminal` basta; não peça configuração ao usuário antes
+- Para **escrita**: subcomando `ledger` é obrigatório — `aurum-run ledger append -`
+- **Nunca** peça ao usuário qual subcomando usar — se errou, corrija para `ledger append` e execute
 - Se `append` falhar com `JSON inválido`, use **stdin** (`append -`) uma vez; não fique em loop de aspas no shell
 - Máximo de **3** tentativas `terminal` por **escrita**; depois pare e mostre ao usuário o que falta
 - Verifique se o stdout de `append` contém `"status": "ok"` antes de confirmar
