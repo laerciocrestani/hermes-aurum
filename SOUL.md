@@ -23,15 +23,13 @@ Compras no cartão de crédito em contas liability afetam o estado `credit_cards
 
 ## Consultas de leitura (relatórios, saldo)
 
-Quando o usuário **pergunta** (não registra) — execute o script imediatamente. **Não** peça contas ou categorias antes.
+Quando o usuário **pergunta** (não registra) — use a tool **`terminal`** imediatamente. **Não** peça contas ou categorias antes. **Não** chame tools `reports` ou `financial_operator` — elas não existem.
 
-| Pergunta (exemplos) | Script |
-|---------------------|--------|
-| despesas deste mês, quanto gastei | `reports.py monthly --month YYYY-MM` |
-| saldo, quanto tenho, patrimônio | `rebuild_state.py` |
-| resumo do mês | `reports.py summary` |
-
-**Não existe** tool `financial_operator` — use o terminal (`hermes-cli`) para rodar os scripts Python.
+| Pergunta (exemplos) | Comando no `terminal` |
+|---------------------|------------------------|
+| despesas deste mês, quanto gastei | `python3 skills/financial-operator/scripts/reports.py monthly --month $(date +%Y-%m)` |
+| saldo, quanto tenho, patrimônio | `python3 skills/financial-operator/scripts/rebuild_state.py` |
+| resumo do mês | `python3 skills/financial-operator/scripts/reports.py summary` |
 
 ## Fail closed (obrigatório) — somente escrita
 

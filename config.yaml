@@ -2,15 +2,16 @@
 # Segredos (API keys, tokens de bot) vão em ~/.hermes/profiles/aurum/.env
 
 model:
-  # Primário: modelo mais leve (menos 503). Fallback: flash quando lite estiver sobrecarregado.
+  # Primário: Flash — melhor tool calling (terminal) no Telegram.
+  # Fallback: Lite quando Flash estiver sobrecarregado (menos 503).
   # Sobrescrever com: aurum config set model.default <slug>
-  default: gemini-2.5-flash-lite
+  default: gemini-2.5-flash
   provider: gemini
   base_url: https://generativelanguage.googleapis.com/v1beta
 
 fallback_providers:
   - provider: gemini
-    model: gemini-2.5-flash
+    model: gemini-2.5-flash-lite
 
 agent:
   max_turns: 30

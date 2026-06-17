@@ -1,7 +1,7 @@
 ---
 name: financial-operator
-description: "Use para registrar transações e consultas somente leitura (despesas do mês, saldos, patrimônio). Apenas fatos — sem opiniões. Execute scripts Python no terminal — não existe tool financial_operator."
-version: 1.3.2
+description: "Use para registrar transações e consultas somente leitura (despesas do mês, saldos, patrimônio). Apenas fatos — sem opiniões. Use SOMENTE a tool terminal com python3 — não existe tool reports nem financial_operator."
+version: 1.3.3
 author: Aurum
 license: MIT
 metadata:
@@ -31,13 +31,37 @@ Nunca calcule saldos manualmente. Nunca trate saldo como verdade persistida. Sem
 
 ## Modelo de execução (crítico)
 
-**Não existe** tool `financial_operator`, MCP nem API. Acesse os dados **somente** executando os scripts Python abaixo no **terminal** (toolset Hermes `hermes-cli`).
+No Hermes, a **única** ferramenta para rodar scripts é **`terminal`** (parâmetro `command`).
 
-| Errado | Certo |
-|--------|-------|
-| "A tool financial_operator não existe" → pedir contas ao usuário | Executar `reports.py` ou `rebuild_state.py` imediatamente |
-| Inventar saldos de memória | Executar `rebuild_state.py` e citar o JSON retornado |
-| Pedir contas/categorias antes de uma consulta de **leitura** | Preflight (`accounts`, `categories.json`) é **somente para escrita** |
+**Não existem** tools chamadas `reports`, `ledger`, `rebuild_state`, `financial_operator`, `financial-operator` nem MCP de finanças. Chamar qualquer um desses nomes **falha**.
+
+| Errado (vai dar erro) | Certo |
+|------------------------|-------|
+| Chamar tool `reports` ou `reports.py` | Chamar tool **`terminal`** com o comando abaixo |
+| Chamar tool `financial_operator` | Idem — só **`terminal`** |
+| "A ferramenta reports não existe" → desistir | Usar **`terminal`** imediatamente |
+| Inventar saldos de memória | `terminal` → `rebuild_state.py` → citar o JSON |
+| Pedir contas/categorias antes de **leitura** | Preflight é **somente para escrita** |
+
+### Exemplo — "Quanto gastei neste mês?"
+
+**Primeira ação:** uma chamada à tool **`terminal`** (não outra tool):
+
+```json
+{
+  "command": "python3 skills/financial-operator/scripts/reports.py monthly --month $(date +%Y-%m)"
+}
+```
+
+Se o caminho relativo falhar, use o absoluto do perfil:
+
+```json
+{
+  "command": "python3 \"$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/reports.py\" monthly --month $(date +%Y-%m)"
+}
+```
+
+Leia o JSON do stdout e responda em português. **Não** tente outra tool se a primeira falhar por nome — corrija para `terminal`.
 
 Caminho dos scripts (funciona de qualquer cwd):
 
@@ -233,12 +257,12 @@ python3 skills/financial-operator/scripts/rebuild_state.py
 
 ## Regras do terminal (crítico)
 
-- **Nunca modifique** `ledger.py` ou outros scripts — apenas execute-os
-- **Nunca diga** que existe uma tool chamada `financial_operator` — use terminal + scripts
+- **Sempre** use a tool Hermes **`terminal`** — nunca `reports`, `ledger`, `rebuild_state` como nome de tool
+- **Nunca modifique** `ledger.py` ou outros scripts — apenas execute-os via `terminal`
 - **Nunca use `init`** para limpar transações
-- Para consultas de **leitura**: uma chamada de script basta; não peça configuração ao usuário antes
-- Se `append` falhar com `Invalid JSON`, use **stdin** (`append -`) uma vez; não fique em loop de aspas no shell
-- Máximo de **3** tentativas no terminal por **escrita**; depois pare e mostre ao usuário o que falta
+- Para consultas de **leitura**: uma chamada `terminal` basta; não peça configuração ao usuário antes
+- Se `append` falhar com `JSON inválido`, use **stdin** (`append -`) uma vez; não fique em loop de aspas no shell
+- Máximo de **3** tentativas `terminal` por **escrita**; depois pare e mostre ao usuário o que falta
 - Verifique se o stdout de `append` contém `"status": "ok"` antes de confirmar
 
 ## Tipos de evento
