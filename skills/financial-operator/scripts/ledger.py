@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Append-only JSONL ledger for Aurum."""
+"""Ledger JSONL append-only do Aurum."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ def load_events(ledger_path: Path) -> list[dict[str, Any]]:
             try:
                 events.append(json.loads(line))
             except json.JSONDecodeError as exc:
-                raise ValueError(f"Invalid JSON at line {lineno}: {exc}") from exc
+                raise ValueError(f"JSON inválido na linha {lineno}: {exc}") from exc
     return events
 
 
@@ -64,20 +64,20 @@ def account_names(events: list[dict[str, Any]]) -> set[str]:
 
 def validate_day_field(value: Any, field_name: str) -> None:
     if not isinstance(value, int) or not 1 <= value <= 31:
-        raise ValueError(f"{field_name} must be an integer between 1 and 31")
+        raise ValueError(f"{field_name} deve ser inteiro entre 1 e 31")
 
 
 def validate_card_config_fields(event: dict[str, Any], *, require_all: bool = False) -> None:
     present = [key for key in CONFIG_FIELDS if key in event]
     if require_all and len(present) < len(CONFIG_FIELDS):
-        raise ValueError("liability account requires credit_limit, closing_day, due_day")
+        raise ValueError("conta liability exige credit_limit, closing_day, due_day")
     if not present:
         return
 
     if "credit_limit" in event:
         limit = event["credit_limit"]
         if not isinstance(limit, (int, float)) or limit <= 0:
-            raise ValueError("credit_limit must be > 0")
+            raise ValueError("credit_limit deve ser > 0")
     if "closing_day" in event:
         validate_day_field(event["closing_day"], "closing_day")
     if "due_day" in event:
@@ -85,7 +85,7 @@ def validate_card_config_fields(event: dict[str, Any], *, require_all: bool = Fa
     if "billing_profile" in event:
         profile = event["billing_profile"]
         if profile not in BILLING_PROFILES:
-            raise ValueError(f"billing_profile must be one of: {', '.join(sorted(BILLING_PROFILES))}")
+            raise ValueError(f"billing_profile deve ser um de: {', '.join(sorted(BILLING_PROFILES))}")
 
 
 def init_ledger(ledger_path: Path, seed_path: Path) -> None:
@@ -93,7 +93,7 @@ def init_ledger(ledger_path: Path, seed_path: Path) -> None:
         return
     ledger_path.parent.mkdir(parents=True, exist_ok=True)
     if not seed_path.exists():
-        raise FileNotFoundError(f"Seed file not found: {seed_path}")
+        raise FileNotFoundError(f"Arquivo seed não encontrado: {seed_path}")
     shutil.copy2(seed_path, ledger_path)
 
 
@@ -104,7 +104,7 @@ def validate_event(
 ) -> None:
     etype = event.get("type")
     if etype not in EVENT_TYPES:
-        raise ValueError(f"Unknown event type: {etype}")
+        raise ValueError(f"Tipo de evento desconhecido: {etype}")
 
     accounts = account_names(events)
     registry = build_account_registry(events)
@@ -112,29 +112,29 @@ def validate_event(
     if etype == "account":
         name = event.get("name")
         if not name:
-            raise ValueError("account event requires 'name'")
+            raise ValueError("evento account exige 'name'")
         if name in accounts:
-            raise ValueError(f"Account already exists: {name}")
+            raise ValueError(f"Conta já existe: {name}")
         kind = event.get("kind")
         if kind not in ("asset", "liability"):
-            raise ValueError("account kind must be 'asset' or 'liability'")
+            raise ValueError("kind da conta deve ser 'asset' ou 'liability'")
         if kind == "liability":
             validate_card_config_fields(event)
         elif any(key in event for key in CONFIG_FIELDS):
-            raise ValueError("card config fields require kind 'liability'")
+            raise ValueError("campos de config de cartão exigem kind 'liability'")
         return
 
     if etype == "account_config":
         account = event.get("account")
         if not account:
-            raise ValueError("account_config requires 'account'")
+            raise ValueError("account_config exige 'account'")
         if account not in accounts:
-            raise ValueError(f"Account not found: {account}")
+            raise ValueError(f"Conta não encontrada: {account}")
         if registry.get(account) and registry[account].kind != "liability":
-            raise ValueError("account_config only applies to liability accounts")
+            raise ValueError("account_config só se aplica a contas liability")
         config_present = [key for key in CONFIG_FIELDS if key in event]
         if not config_present:
-            raise ValueError("account_config requires at least one config field")
+            raise ValueError("account_config exige ao menos um campo de config")
         validate_card_config_fields(event)
         return
 
@@ -143,62 +143,62 @@ def validate_event(
         category = event.get("category")
         amount = event.get("amount")
         if account not in accounts:
-            raise ValueError(f"Account not found: {account}")
+            raise ValueError(f"Conta não encontrada: {account}")
         if etype == "expense":
             pool = categories.get("expense", set())
         else:
             pool = categories.get("income", set())
         if category not in pool:
-            raise ValueError(f"Invalid category '{category}' for {etype}")
+            raise ValueError(f"Categoria inválida '{category}' para {etype}")
         if not isinstance(amount, (int, float)) or amount <= 0:
-            raise ValueError(f"{etype} amount must be > 0")
+            raise ValueError(f"valor de {etype} deve ser > 0")
         if etype == "expense" and is_credit_card(registry, account):
             installments = event.get("installments", 1)
             if not isinstance(installments, int) or installments < 1:
-                raise ValueError("installments must be an integer >= 1")
+                raise ValueError("installments deve ser inteiro >= 1")
             profile = registry[account].billing_profile or "br"
             if profile == "simple" and installments > 1:
-                raise ValueError("installments > 1 requires billing_profile 'br'")
+                raise ValueError("installments > 1 exige billing_profile 'br'")
             if registry[account].closing_day is None:
-                raise ValueError(f"Credit card '{account}' requires closing_day in account_config")
+                raise ValueError(f"Cartão de crédito '{account}' exige closing_day em account_config")
         return
 
     if etype == "transfer":
         src, dst, amount = event.get("from"), event.get("to"), event.get("amount")
         if src not in accounts:
-            raise ValueError(f"Account not found: {src}")
+            raise ValueError(f"Conta não encontrada: {src}")
         if dst not in accounts:
-            raise ValueError(f"Account not found: {dst}")
+            raise ValueError(f"Conta não encontrada: {dst}")
         if not isinstance(amount, (int, float)) or amount <= 0:
-            raise ValueError("transfer amount must be > 0")
+            raise ValueError("valor de transferência deve ser > 0")
         return
 
     if etype == "investment":
         account, amount = event.get("account"), event.get("amount")
         if account not in accounts:
-            raise ValueError(f"Account not found: {account}")
+            raise ValueError(f"Conta não encontrada: {account}")
         if not event.get("asset"):
-            raise ValueError("investment requires 'asset'")
+            raise ValueError("investment exige 'asset'")
         if not isinstance(amount, (int, float)) or amount <= 0:
-            raise ValueError("investment amount must be > 0")
+            raise ValueError("valor de investment deve ser > 0")
         return
 
     if etype == "adjustment":
         account, amount, reason = event.get("account"), event.get("amount"), event.get("reason")
         if account not in accounts:
-            raise ValueError(f"Account not found: {account}")
+            raise ValueError(f"Conta não encontrada: {account}")
         if not isinstance(amount, (int, float)) or amount == 0:
-            raise ValueError("adjustment amount must be non-zero")
+            raise ValueError("valor de adjustment deve ser diferente de zero")
         if not reason:
-            raise ValueError("adjustment requires 'reason'")
+            raise ValueError("adjustment exige 'reason'")
         return
 
     if etype == "liability":
         if not event.get("name"):
-            raise ValueError("liability requires 'name'")
+            raise ValueError("liability exige 'name'")
         amount = event.get("amount")
         if not isinstance(amount, (int, float)):
-            raise ValueError("liability requires numeric 'amount'")
+            raise ValueError("liability exige 'amount' numérico")
 
 
 def cmd_init(paths: dict[str, Path]) -> None:
@@ -211,7 +211,7 @@ def read_append_json(arg: str) -> str:
     if arg == "-":
         raw = sys.stdin.read()
         if not raw.strip():
-            raise ValueError("No JSON on stdin")
+            raise ValueError("Nenhum JSON no stdin")
         return raw
     return arg
 
@@ -221,7 +221,7 @@ def cmd_append(paths: dict[str, Path], raw_json: str) -> None:
     try:
         event = json.loads(raw_json)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"Invalid JSON: {exc}") from exc
+        raise ValueError(f"JSON inválido: {exc}") from exc
 
     events = load_events(paths["ledger"])
     categories = load_categories(paths["categories"])
@@ -256,14 +256,14 @@ def cmd_accounts(paths: dict[str, Path]) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Aurum append-only ledger")
+    parser = argparse.ArgumentParser(description="Ledger append-only do Aurum")
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("init")
     p_append = sub.add_parser("append")
     p_append.add_argument(
         "json",
-        help='JSON event string, or "-" to read one JSON object from stdin',
+        help='String JSON do evento, ou "-" para ler um objeto JSON do stdin',
     )
 
     p_list = sub.add_parser("list")

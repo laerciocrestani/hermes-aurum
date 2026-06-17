@@ -1,17 +1,17 @@
 name: aurum
-version: 1.2.2
-description: "Event-sourced personal finance agent — ledger, reports, and on-demand mentoring"
+version: 1.3.0
+description: "Agente de finanças pessoais event-sourced — ledger, relatórios e mentoria sob demanda"
 hermes_requires: ">=0.12.0"
 author: "Laercio Crestani"
 license: MIT
 
 env_requires:
   - name: GOOGLE_API_KEY
-    description: "Google AI Studio API key (Gemini). Also accepts GEMINI_API_KEY. Can live in ~/.hermes/.env."
+    description: "Chave da API Google AI Studio (Gemini). Também aceita GEMINI_API_KEY. Pode ficar em ~/.hermes/.env."
     required: true
   - name: TELEGRAM_BOT_TOKEN
-    description: "Bot token from @BotFather (only if using Telegram gateway)"
+    description: "Token do bot do @BotFather (somente se usar gateway Telegram)"
     required: false
   - name: TELEGRAM_ALLOWED_USERS
-    description: "Your Telegram user ID from @userinfobot (only if using Telegram)"
+    description: "Seu ID numérico do Telegram (@userinfobot) (somente se usar Telegram)"
     required: false

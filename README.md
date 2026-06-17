@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="avatar.png" alt="Aurum — personal finance agent for Hermes" width="220" />
+  <img src="avatar.png" alt="Aurum — agente de finanças pessoais para Hermes" width="220" />
 </p>
 
 <h1 align="center">Aurum</h1>
 
 <p align="center">
-  <strong>Personal finance agent for Hermes</strong><br/>
-  Event-sourced ledger · derived net worth · mentoring on demand
+  <strong>Agente de finanças pessoais para Hermes</strong><br/>
+  Ledger event-sourced · patrimônio derivado · mentoria sob demanda
 </p>
 
 <p align="center">
@@ -16,70 +16,70 @@
 </p>
 
 <p align="center">
-  Open source — free to use, fork, and contribute.
+  Open source — livre para usar, fazer fork e contribuir.
 </p>
 
 ---
 
-**Contents:** [What is Aurum](#what-is-aurum) · [Example](#example) · [Architecture](#architecture) · [Categories](#categories) · [Data model](#data-model) · [Scripts](#scripts-direct-usage) · [Roadmap](#not-implemented-yet) · [Installation](#installation)
+**Conteúdo:** [O que é o Aurum](#o-que-é-o-aurum) · [Exemplo](#exemplo) · [Arquitetura](#arquitetura) · [Categorias](#categorias) · [Modelo de dados](#modelo-de-dados-jsonl) · [Scripts](#scripts-uso-direto) · [Roadmap](#ainda-não-implementado) · [Instalação](#instalação)
 
 ---
 
-## What is Aurum?
+## O que é o Aurum?
 
-**Aurum** is a conversational agent for [Hermes Agent](https://github.com/NousResearch/hermes-agent). You talk to it on **CLI** or **Telegram**; it records your finances and answers from facts — never from guesswork.
+O **Aurum** é um agente conversacional para o [Hermes Agent](https://github.com/NousResearch/hermes-agent). Você conversa via **CLI** ou **Telegram**; ele registra suas finanças e responde com base em fatos — nunca em suposições.
 
-| Mode | Share | When | Behavior |
-|:----:|:-----:|------|----------|
-| **Operator** | 90% | Logging, balances, reports | Facts only. No opinions. |
-| **Mentor** | 10% | "Can I invest?", "Should I pay off debt?" | Guidance based on your recorded data |
+| Modo | Uso | Quando | Comportamento |
+|:----:|:---:|--------|---------------|
+| **Operador** | 90% | Lançamentos, saldos, relatórios | Apenas fatos. Sem opiniões. |
+| **Mentor** | 10% | "Posso investir?", "Devo quitar a dívida?" | Orientação com base nos dados registrados |
 
 ```mermaid
 flowchart LR
-  U(["You"]) -->|expense, balance, report| OP["financial-operator"]
-  U -->|can I, should I| MN["financial-mentor"]
-  OP -->|append events| L[("ledger.jsonl")]
-  MN -->|read first| R["rebuild_state.py"]
+  U(["Você"]) -->|despesa, saldo, relatório| OP["financial-operator"]
+  U -->|posso, devo| MN["financial-mentor"]
+  OP -->|append eventos| L[("ledger.jsonl")]
+  MN -->|lê primeiro| R["rebuild_state.py"]
   L --> R
-  R -->|facts| MN
-  OP -->|facts| U
-  MN -->|guidance| U
+  R -->|fatos| MN
+  OP -->|fatos| U
+  MN -->|orientação| U
 ```
 
-### Philosophy
+### Filosofia
 
-> Aurum is an event-based financial manager. Its primary goal is to faithfully record your financial activity, reconstruct your net worth at any time, and provide financial guidance based exclusively on the data you have logged.
+> O Aurum é um gestor financeiro baseado em eventos. Seu objetivo principal é registrar fielmente sua atividade financeira, reconstruir seu patrimônio a qualquer momento e oferecer orientação financeira com base exclusivamente nos dados que você registrou.
 
-### Golden rule
+### Regra de ouro
 
-| Principle | Meaning |
-|-----------|---------|
-| **No stored balances** | Balances are never absolute truth on disk |
-| **Derived net worth** | Always rebuilt from the event history |
-| **Append-only ledger** | Corrections use `adjustment` events — never line edits |
+| Princípio | Significado |
+|-----------|-------------|
+| **Sem saldos armazenados** | Saldos nunca são verdade absoluta em disco |
+| **Patrimônio derivado** | Sempre reconstruído a partir do histórico de eventos |
+| **Ledger append-only** | Correções usam eventos `adjustment` — nunca edição de linhas |
 
-## Example
+## Exemplo
 
 <table>
 <tr>
 <td width="50%">
 
-**You**
+**Você**
 
 ```
-I spent R$ 52.30 at the grocery store using Inter.
+Gastei R$ 52,30 no mercado pelo Inter.
 ```
 
 </td>
 <td width="50%">
 
-**Aurum** *(operator)*
+**Aurum** *(operador)*
 
 ```
-✓ Recorded.
-✓ Updated Inter balance.
-✓ Updated cash flow.
-✓ Category: Alimentação.
+✓ Registrado.
+✓ Saldo do Inter atualizado.
+✓ Fluxo de caixa atualizado.
+✓ Categoria: Alimentação.
 ```
 
 </td>
@@ -88,13 +88,13 @@ I spent R$ 52.30 at the grocery store using Inter.
 <td>
 
 ```
-How much do I have available?
+Quanto tenho disponível?
 ```
 
 </td>
 <td>
 
-Runs `rebuild_state.py` — facts from the ledger.
+Executa `rebuild_state.py` — fatos do ledger.
 
 </td>
 </tr>
@@ -102,21 +102,21 @@ Runs `rebuild_state.py` — facts from the ledger.
 <td>
 
 ```
-Can I invest R$ 5,000 in BTC?
+Posso investir R$ 5.000 em BTC?
 ```
 
 </td>
 <td>
 
-*(mentor)* Facts + qualified analysis, with caveats.
+*(mentor)* Fatos + análise qualificada, com ressalvas.
 
 </td>
 </tr>
 </table>
 
-## Architecture
+## Arquitetura
 
-This repo is a [Hermes profile distribution](https://hermes-agent.nousresearch.com/docs/user-guide/profile-distributions). `hermes profile install` copies it into `~/.hermes/profiles/aurum/` and creates the `aurum` command.
+Este repositório é uma [distribuição de perfil Hermes](https://hermes-agent.nousresearch.com/docs/user-guide/profile-distributions). `hermes profile install` copia para `~/.hermes/profiles/aurum/` e cria o comando `aurum`.
 
 ```mermaid
 flowchart TB
@@ -128,37 +128,37 @@ flowchart TB
     AV["avatar.png"]
   end
 
-  subgraph local["Your machine"]
+  subgraph local["Sua máquina"]
     PROF["~/.hermes/profiles/aurum/"]
-    ENV[".env — secrets"]
+    ENV[".env — segredos"]
     LEDGER[("$HERMES_HOME/data/ledger.jsonl")]
     MEM["memories/ · sessions/"]
   end
 
   repo -->|profile install| PROF
-  ENV -.->|never committed| PROF
+  ENV -.->|nunca commitado| PROF
   SK --> LEDGER
-  MEM -.->|never overwritten on update| PROF
+  MEM -.->|nunca sobrescrito no update| PROF
 ```
 
-| Component | Role |
-|-----------|------|
-| `SOUL.md` | Persona and behavior rules |
-| `config.yaml` | Model, toolsets, memory settings |
+| Componente | Função |
+|------------|--------|
+| `SOUL.md` | Persona e regras de comportamento |
+| `config.yaml` | Modelo, toolsets, memória |
 | `skills/` | `financial-operator` + `financial-mentor` |
-| `references/` | Category list and ledger seed |
-| `avatar.png` | Suggested Telegram bot profile picture |
+| `references/` | Lista de categorias e seed do ledger |
+| `avatar.png` | Foto sugerida para o bot no Telegram |
 
-| Stored in GitHub | Stays local only |
-|------------------|------------------|
-| Skills, SOUL, config, categories | API keys, bot tokens |
-| | Ledger, memories, sessions |
+| No GitHub | Só local |
+|-----------|----------|
+| Skills, SOUL, config, categorias | API keys, tokens de bot |
+| | Ledger, memórias, sessões |
 
-## Repository structure
+## Estrutura do repositório
 
 ```
 hermes-aurum/
-├── avatar.png           # bot profile picture (see Installation)
+├── avatar.png           # foto do bot (ver Instalação)
 ├── README.md
 ├── ROADMAP.md
 ├── distribution.yaml
@@ -179,11 +179,11 @@ hermes-aurum/
         └── SKILL.md
 ```
 
-## Categories
+## Categorias
 
-The operator maps your language to **exact** strings in `references/categories.json`. `ledger.py` rejects anything not listed.
+O operador mapeia sua linguagem para strings **exatas** em `references/categories.json`. O `ledger.py` rejeita qualquer coisa fora da lista.
 
-Default categories are **pt-BR**:
+Categorias padrão em **pt-BR**:
 
 ```json
 {
@@ -192,17 +192,17 @@ Default categories are **pt-BR**:
 }
 ```
 
-Keep the `expense` and `income` keys. No restart required.
+Mantenha as chaves `expense` e `income`. Não precisa reiniciar o gateway.
 
-**Versioning:** bump `distribution.yaml` on every release — see [docs/versioning.md](docs/versioning.md).
+**Versionamento:** incremente `distribution.yaml` a cada release — veja [docs/versioning.md](docs/versioning.md).
 
 ## Backup
 
-Daily ledger backup on the server: [docs/backup.md](docs/backup.md) (`bkp/aurum-YYYYMMDD.tar.gz`, cron at 03:00).
+Backup diário do ledger no servidor: [docs/backup.md](docs/backup.md) (`bkp/aurum-YYYYMMDD.tar.gz`, cron às 03:00).
 
-## Data model (JSONL)
+## Modelo de dados (JSONL)
 
-Each line is one independent event — the ledger is rebuilt from this file:
+Cada linha é um evento independente — o ledger é reconstruído a partir deste arquivo:
 
 ```jsonl
 {"type":"account","name":"Banco Inter","kind":"asset"}
@@ -210,19 +210,19 @@ Each line is one independent event — the ledger is rebuilt from this file:
 {"type":"income","date":"2026-06-10","account":"Banco Inter","category":"Salário","amount":5000}
 {"type":"transfer","date":"2026-06-10","from":"Banco Inter","to":"Carteira","amount":100}
 {"type":"investment","date":"2026-06-10","account":"Banco Inter","asset":"BTC","amount":500}
-{"type":"adjustment","date":"2026-06-10","account":"Carteira","amount":15,"reason":"Physical count"}
+{"type":"adjustment","date":"2026-06-10","account":"Carteira","amount":15,"reason":"Contagem física"}
 ```
 
-| Type | Purpose |
-|------|---------|
-| `account` | Register a wallet or bank account |
-| `expense` / `income` | Money in or out |
-| `transfer` | Between your accounts |
-| `investment` | Buy/hold an asset |
-| `liability` | Debt tracking |
-| `adjustment` | Physical count correction (signed amount) |
+| Tipo | Finalidade |
+|------|------------|
+| `account` | Registrar carteira ou conta bancária |
+| `expense` / `income` | Saída ou entrada de dinheiro |
+| `transfer` | Entre suas contas |
+| `investment` | Compra/manutenção de ativo |
+| `liability` | Acompanhamento de dívida |
+| `adjustment` | Correção de contagem física (valor com sinal) |
 
-## Scripts (direct usage)
+## Scripts (uso direto)
 
 ```bash
 SCRIPT="skills/financial-operator/scripts"
@@ -232,38 +232,38 @@ python3 "$SCRIPT/rebuild_state.py"
 python3 "$SCRIPT/reports.py" monthly --month 2026-06
 ```
 
-## Implemented (MVP v1.0)
+## Implementado (MVP v1.0)
 
-- [x] Append-only JSONL ledger
-- [x] Financial operator (logging, categorization, reports)
-- [x] Financial mentor (on demand)
-- [x] State reconstruction from event history
-- [x] Account and category validation on append
-- [x] Atomic writes (`flush` + `fsync`)
-- [x] Auto-init on first write
-- [x] Events: account, expense, income, transfer, investment, liability, adjustment
+- [x] Ledger JSONL append-only
+- [x] Operador financeiro (lançamentos, categorização, relatórios)
+- [x] Mentor financeiro (sob demanda)
+- [x] Reconstrução de estado a partir do histórico
+- [x] Validação de conta e categoria no append
+- [x] Escritas atômicas (`flush` + `fsync`)
+- [x] Auto-init na primeira escrita
+- [x] Eventos: account, expense, income, transfer, investment, liability, adjustment
 
-## Not implemented yet
+## Ainda não implementado
 
-See [ROADMAP.md](ROADMAP.md) for detailed future plans.
+Veja [ROADMAP.md](ROADMAP.md) para planos futuros detalhados.
 
 ---
 
-## Installation
+## Instalação
 
-Everything above is **what** Aurum is. Below is **how** to run it — follow the steps in order.
+Tudo acima é **o que** o Aurum é. Abaixo está **como** executar — siga os passos em ordem.
 
-### Overview
+### Visão geral
 
 ```mermaid
 flowchart TD
-  S1["① Install Hermes"]
-  S2["② Gather credentials<br/>Google Gemini + Telegram"]
-  S3["③ Install Aurum profile"]
+  S1["① Instalar Hermes"]
+  S2["② Obter credenciais<br/>Google Gemini + Telegram"]
+  S3["③ Instalar perfil Aurum"]
   S4["④ aurum setup"]
-  S5["⑤ Customize categories"]
-  S6["⑥ Start gateway"]
-  S7["⑦ Chat"]
+  S5["⑤ Personalizar categorias"]
+  S6["⑥ Iniciar gateway"]
+  S7["⑦ Conversar"]
 
   S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7
 
@@ -272,21 +272,21 @@ flowchart TD
   style S7 fill:#fff3e0
 ```
 
-> **No clone required.** `hermes profile install` pulls from GitHub. Clone only to develop or edit the repo directly.
+> **Clone não é obrigatório.** `hermes profile install` baixa do GitHub. Clone só para desenvolver ou editar o repositório diretamente.
 
-### Before you start
+### Antes de começar
 
-| Requirement | Where to get it | Step |
-|-------------|-----------------|------|
-| Hermes Agent | [install script](https://hermes-agent.nousresearch.com) | ① |
-| Google Gemini API key | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | ②a |
-| Telegram bot token | [@BotFather](https://t.me/BotFather) | ②b |
-| Telegram user ID | [@userinfobot](https://t.me/userinfobot) | ②c |
-| Python 3.10+ | System / Hermes installer | — |
+| Requisito | Onde obter | Passo |
+|-----------|------------|-------|
+| Hermes Agent | [script de instalação](https://hermes-agent.nousresearch.com) | ① |
+| Chave API Google Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | ②a |
+| Token do bot Telegram | [@BotFather](https://t.me/BotFather) | ②b |
+| ID de usuário Telegram | [@userinfobot](https://t.me/userinfobot) | ②c |
+| Python 3.10+ | Sistema / instalador Hermes | — |
 
 ---
 
-### ① Install Hermes
+### ① Instalar Hermes
 
 ```bash
 curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
@@ -295,43 +295,43 @@ hermes doctor
 
 ---
 
-### ② Gather credentials
+### ② Obter credenciais
 
-Do this **before** `aurum setup` — on phone and browser in parallel.
+Faça isso **antes** do `aurum setup` — no celular e no navegador em paralelo.
 
-#### ②a Google Gemini API key
+#### ②a Chave API Google Gemini
 
-1. Sign in at [Google AI Studio](https://aistudio.google.com)
-2. [Create an API key](https://aistudio.google.com/apikey) → copy the key
+1. Entre no [Google AI Studio](https://aistudio.google.com)
+2. [Crie uma API key](https://aistudio.google.com/apikey) → copie a chave
 
-Free tier covers Flash / Flash-Lite for light use; enable billing on a separate GCP project for daily Telegram use.
+O tier gratuito cobre Flash / Flash-Lite para uso leve; habilite billing em um projeto GCP separado para uso diário no Telegram.
 
-#### ②b Telegram bot (BotFather)
+#### ②b Bot Telegram (BotFather)
 
-1. Open [@BotFather](https://t.me/BotFather)
-2. `/newbot` → display name (e.g. `Aurum`) → username ending in `bot`
-3. Copy the **API token** (`123456789:ABCdef...`)
+1. Abra [@BotFather](https://t.me/BotFather)
+2. `/newbot` → nome de exibição (ex.: `Aurum`) → username terminando em `bot`
+3. Copie o **token da API** (`123456789:ABCdef...`)
 
-**Set the avatar** — send `avatar.png` from this repo:
+**Defina o avatar** — envie `avatar.png` deste repositório:
 
-1. `/setuserpic` → select your bot → upload `avatar.png`
+1. `/setuserpic` → selecione seu bot → envie `avatar.png`
 
-Optional polish:
+Opcional:
 
-| Command | Purpose |
-|---------|---------|
-| `/setdescription` | “Personal finance ledger on Telegram” |
-| `/setabouttext` | Short profile blurb |
+| Comando | Finalidade |
+|---------|------------|
+| `/setdescription` | "Ledger de finanças pessoais no Telegram" |
+| `/setabouttext` | Texto curto do perfil |
 | `/setcommands` | `/help`, `/new`, etc. |
 
-> Revoke a leaked token: `/revoke` in BotFather.
+> Token vazado: `/revoke` no BotFather.
 
-#### ②c Telegram user ID
+#### ②c ID de usuário Telegram
 
-1. Message [@userinfobot](https://t.me/userinfobot)
-2. Copy the **numeric** ID (not `@username`)
+1. Envie mensagem para [@userinfobot](https://t.me/userinfobot)
+2. Copie o ID **numérico** (não o `@username`)
 
-**Checkpoint** — three values ready:
+**Checkpoint** — três valores prontos:
 
 ```bash
 GOOGLE_API_KEY=...
@@ -341,9 +341,9 @@ TELEGRAM_ALLOWED_USERS=123456789
 
 ---
 
-### ③ Install the Aurum agent
+### ③ Instalar o agente Aurum
 
-Creates `~/.hermes/profiles/aurum/` and the `aurum` CLI:
+Cria `~/.hermes/profiles/aurum/` e a CLI `aurum`:
 
 ```bash
 hermes profile install github.com/laerciocrestani/hermes-aurum --alias -y
@@ -351,7 +351,7 @@ hermes profile info aurum
 aurum doctor
 ```
 
-**Developers** (local clone):
+**Desenvolvedores** (clone local):
 
 ```bash
 git clone https://github.com/laerciocrestani/hermes-aurum.git
@@ -359,7 +359,7 @@ cd hermes-aurum
 hermes profile install "$(pwd)" --alias -y
 ```
 
-Updates (ledger and memories preserved):
+Atualizações (ledger e memórias preservados):
 
 ```bash
 hermes profile update aurum
@@ -367,21 +367,21 @@ hermes profile update aurum
 
 ---
 
-### ④ Configure (`aurum setup`)
+### ④ Configurar (`aurum setup`)
 
 ```bash
 aurum setup
 ```
 
-| Setting | Source |
-|---------|--------|
-| `GOOGLE_API_KEY` | Step ②a (or shared `~/.hermes/.env`) |
-| `TELEGRAM_BOT_TOKEN` | Step ②b |
-| `TELEGRAM_ALLOWED_USERS` | Step ②c |
+| Configuração | Origem |
+|--------------|--------|
+| `GOOGLE_API_KEY` | Passo ②a (ou `~/.hermes/.env` compartilhado) |
+| `TELEGRAM_BOT_TOKEN` | Passo ②b |
+| `TELEGRAM_ALLOWED_USERS` | Passo ②c |
 
-Or edit `~/.hermes/profiles/aurum/.env` manually.
+Ou edite `~/.hermes/profiles/aurum/.env` manualmente.
 
-Default model in `config.yaml`:
+Modelo padrão em `config.yaml`:
 
 ```yaml
 model:
@@ -394,70 +394,70 @@ fallback_providers:
     model: gemini-2.5-flash
 ```
 
-Change later: `aurum model` · `aurum config set model.default <slug>`
+Alterar depois: `aurum model` · `aurum config set model.default <slug>`
 
 ---
 
-### ⑤ Customize categories
+### ⑤ Personalizar categorias
 
-Edit `~/.hermes/profiles/aurum/references/categories.json` — see [Categories](#categories).
+Edite `~/.hermes/profiles/aurum/references/categories.json` — veja [Categorias](#categorias).
 
 ---
 
-### ⑥ Start the Telegram gateway
+### ⑥ Iniciar o gateway Telegram
 
 ```bash
 aurum gateway start
 ```
 
-Background service:
+Como serviço em background:
 
 ```bash
 aurum gateway install && aurum gateway start && aurum gateway status
 ```
 
-Skipped Telegram in ④? Run `aurum gateway setup` first.
+Pulou o Telegram no ④? Execute `aurum gateway setup` primeiro.
 
 Docs: [Gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) · [Telegram](https://hermes-agent.nousresearch.com/docs/user-guide/messaging/telegram)
 
-#### ⑥b Approve pairing (first connection)
+#### ⑥b Aprovar pareamento (primeira conexão)
 
-After the gateway is **running**, authorize yourself on Telegram:
+Com o gateway **rodando**, autorize-se no Telegram:
 
-**On your phone**
+**No celular**
 
-1. Open Telegram → **new chat** with the bot you created
-2. Send `/start`
-3. The bot replies with a pairing code (8 characters, e.g. `DTN4K8XP`)
+1. Abra o Telegram → **novo chat** com o bot que você criou
+2. Envie `/start`
+3. O bot responde com um código de pareamento (8 caracteres, ex.: `DTN4K8XP`)
 
-**On your terminal**
+**No terminal**
 
 ```bash
 aurum pairing approve telegram DTN4K8XP
 ```
 
-Replace `DTN4K8XP` with the code the bot sent you. Codes expire after 1 hour.
+Substitua `DTN4K8XP` pelo código que o bot enviou. Códigos expiram em 1 hora.
 
 ```bash
-aurum pairing list    # pending + approved users
+aurum pairing list    # usuários pendentes + aprovados
 ```
 
-> If you set `TELEGRAM_ALLOWED_USERS` correctly in step ④, pairing may be skipped — but `/start` + approve is the safest first-time flow when the bot does not respond yet.
+> Se você configurou `TELEGRAM_ALLOWED_USERS` corretamente no passo ④, o pareamento pode ser dispensado — mas `/start` + approve é o fluxo mais seguro na primeira vez, quando o bot ainda não responde.
 
 ---
 
-### ⑦ Use Aurum
+### ⑦ Usar o Aurum
 
-| Channel | Command / action |
-|---------|------------------|
+| Canal | Comando / ação |
+|-------|----------------|
 | **CLI** | `aurum chat` |
-| **Telegram** | Message your bot — e.g. “Gastei R$ 52,30 no mercado pelo Inter” |
+| **Telegram** | Mensagem para o bot — ex.: "Gastei R$ 52,30 no mercado pelo Inter" |
 
-First transaction creates `$HERMES_HOME/data/ledger.jsonl` automatically.
+A primeira transação cria `$HERMES_HOME/data/ledger.jsonl` automaticamente.
 
 ---
 
-### Development: symlink workflow
+### Desenvolvimento: workflow com symlink
 
 ```bash
 REPO="$(pwd)"
@@ -473,16 +473,16 @@ cp "$REPO/config.yaml" "$PROFILE/config.yaml"
 
 ---
 
-## Contributing
+## Contribuindo
 
-1. Read [ROADMAP.md](ROADMAP.md) before large PRs
-2. Open issues for future features — don't implement silently
-3. Keep the golden rule: derived balances, never persisted
+1. Leia [ROADMAP.md](ROADMAP.md) antes de PRs grandes
+2. Abra issues para funcionalidades futuras — não implemente em silêncio
+3. Mantenha a regra de ouro: saldos derivados, nunca persistidos
 
-## License
+## Licença
 
-MIT — see [LICENSE](LICENSE).
+MIT — veja [LICENSE](LICENSE).
 
-## Disclaimer
+## Aviso legal
 
-Aurum is **not** regulated financial advice. Mentor mode offers guidance based on data you logged, with caveats. Financial decisions are your responsibility.
+O Aurum **não** é consultoria financeira regulamentada. O modo mentor oferece orientação com base nos dados que você registrou, com ressalvas. Decisões financeiras são de sua responsabilidade.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Daily backup for Aurum profile data (ledger, categories, memory)."""
+"""Backup diário dos dados do perfil Aurum (ledger, categorias, memória)."""
 
 from __future__ import annotations
 
@@ -71,8 +71,8 @@ def run_backup(keep_days: int) -> dict:
     sources = files_to_backup(hermes_home, paths)
     if not sources:
         raise FileNotFoundError(
-            "Nothing to back up — ledger not found. "
-            f"Expected ledger at {paths['ledger']}"
+            "Nada para fazer backup — ledger não encontrado. "
+            f"Ledger esperado em {paths['ledger']}"
         )
 
     with tarfile.open(archive, "w:gz") as tar:
@@ -102,18 +102,18 @@ def run_backup(keep_days: int) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Aurum daily backup")
+    parser = argparse.ArgumentParser(description="Backup diário do Aurum")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_run = sub.add_parser("run", help="Create today's backup archive")
+    p_run = sub.add_parser("run", help="Criar arquivo de backup de hoje")
     p_run.add_argument(
         "--keep-days",
         type=int,
         default=int(os.environ.get("AURUM_BACKUP_KEEP_DAYS", DEFAULT_KEEP_DAYS)),
-        help=f"Delete archives older than N days (default: {DEFAULT_KEEP_DAYS})",
+        help=f"Apagar arquivos mais antigos que N dias (padrão: {DEFAULT_KEEP_DAYS})",
     )
 
-    p_list = sub.add_parser("list", help="List backup archives")
+    p_list = sub.add_parser("list", help="Listar arquivos de backup")
 
     args = parser.parse_args()
     hermes_home = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))

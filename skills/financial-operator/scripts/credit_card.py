@@ -136,14 +136,14 @@ def apply_card_expense(
     as_of: date | None = None,
 ) -> None:
     if info.closing_day is None:
-        raise ValueError("Credit card requires closing_day in account_config")
+        raise ValueError("Cartão de crédito exige closing_day em account_config")
 
     purchase = date.fromisoformat(purchase_date)
     profile = info.billing_profile or "br"
     count = max(1, installments)
 
     if profile == "simple" and count > 1:
-        raise ValueError("installments > 1 requires billing_profile 'br'")
+        raise ValueError("installments > 1 exige billing_profile 'br'")
 
     schedule = installment_schedule(purchase, info.closing_day, float(amount), count)
     card.committed = round(card.committed + float(amount), 2)
@@ -170,7 +170,7 @@ def apply_card_payment(
     as_of: date | None = None,
 ) -> None:
     if info.closing_day is None:
-        raise ValueError("Credit card requires closing_day for payments")
+        raise ValueError("Cartão de crédito exige closing_day para pagamentos")
 
     remaining = float(amount)
     for month_key in sorted(card.statements.keys()):

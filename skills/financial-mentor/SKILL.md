@@ -1,7 +1,7 @@
 ---
 name: financial-mentor
-description: "Use when user asks for financial advice: can I, should I, is it worth, portfolio review. Requires rebuild_state.py first. Never modify ledger."
-version: 1.0.0
+description: "Use quando o usuário pedir orientação financeira: posso, devo, vale a pena, revisão de portfólio. Exige rebuild_state.py antes. Nunca modifique o ledger."
+version: 1.1.0
 author: Aurum
 license: MIT
 metadata:
@@ -10,42 +10,44 @@ metadata:
     related_skills: [financial-operator]
 ---
 
-# Financial Mentor
+# Mentor Financeiro
 
-Aurum mentor mode (10%). Activated only when the user asks for guidance.
+Modo mentor do Aurum (10%). Ativado somente quando o usuário pede orientação.
 
-## When to Use
+**Idioma:** o usuário fala em **português (pt-BR)**. Responda sempre em português.
 
-Triggers: "can I", "should I", "is it worth", "is my portfolio good", "should I pay off debt", "should I invest in".
+## Quando usar
 
-**Do not use for:** logging transactions, balance lookups, reports — use `financial-operator`.
+Gatilhos: "posso", "devo", "vale a pena", "meu portfólio está bom", "devo quitar a dívida", "devo investir em".
 
-## Procedure
+**Não usar para:** registrar transações, consultar saldo, relatórios — use `financial-operator`.
 
-1. **Required:** run state and reports before any advice:
+## Procedimento
+
+1. **Obrigatório:** execute estado e relatórios antes de qualquer conselho:
 
 ```bash
 python3 skills/financial-operator/scripts/rebuild_state.py
 python3 skills/financial-operator/scripts/reports.py summary
 ```
 
-2. Present facts with caveat: "Based on what is recorded..."
-3. Offer qualified guidance — trade-offs, not orders
-4. **Never** append to ledger or modify data
-5. If ledger is empty, ask user to log transactions first
+2. Apresente fatos com ressalva: "Com base no que está registrado..."
+3. Ofereça orientação qualificada — trade-offs, não ordens
+4. **Nunca** faça append no ledger nem modifique dados
+5. Se o ledger estiver vazio, peça ao usuário para registrar transações primeiro (via `financial-operator`)
 
-## Example
+## Exemplo
 
-User: "Can I invest R$ 5,000 in BTC?"
+Usuário: "Posso investir R$ 5.000 em BTC?"
 
-1. Run rebuild_state.py → available funds, liabilities
-2. Run reports.py summary → monthly spending
-3. Answer with facts + analysis + caveats
-4. Do not say "yes, buy" or "no, don't" as absolute truth
+1. Execute `rebuild_state.py` → fundos disponíveis, passivos
+2. Execute `reports.py summary` → gastos do mês
+3. Responda com fatos + análise + ressalvas
+4. Não diga "sim, compre" ou "não, não compre" como verdade absoluta
 
-## Pitfalls
+## Armadilhas
 
-- Never advise without running scripts first
-- Never calculate numbers manually
-- Never register events in mentor mode
-- Always include disclaimer that this is not regulated financial advice
+- Nunca oriente sem executar os scripts primeiro
+- Nunca calcule números manualmente
+- Nunca registre eventos no modo mentor
+- Sempre inclua aviso de que isso não é consultoria financeira regulamentada

@@ -1,3 +1,3 @@
-# Deprecated
+# Obsoleto
 
-The canonical persona file is [`SOUL.md`](../SOUL.md) at the repository root (installed by `hermes profile install`).
+O arquivo canônico de persona é [`SOUL.md`](../SOUL.md) na raiz do repositório (instalado por `hermes profile install`).

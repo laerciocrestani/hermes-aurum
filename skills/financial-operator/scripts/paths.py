@@ -1,4 +1,4 @@
-"""Resolve Aurum paths from script location (works with symlinks)."""
+"""Resolve caminhos do Aurum a partir da localização do script (funciona com symlinks)."""
 
 from __future__ import annotations
 
@@ -19,8 +19,8 @@ def find_references_dir(start: Path | None = None) -> Path:
             break
         current = current.parent
     raise FileNotFoundError(
-        "references/categories.json not found — ensure the Aurum repo is intact "
-        "or skills are symlinked from the repository."
+        "references/categories.json não encontrado — verifique se o repositório Aurum está íntegro "
+        "ou se as skills estão com symlink a partir do repositório."
     )
 
 

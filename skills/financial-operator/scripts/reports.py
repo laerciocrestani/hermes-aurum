@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Financial reports derived from ledger events."""
+"""Relatórios financeiros derivados de eventos do ledger."""
 
 from __future__ import annotations
 
@@ -83,7 +83,7 @@ def summary_report(events: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Aurum financial reports")
+    parser = argparse.ArgumentParser(description="Relatórios financeiros do Aurum")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_monthly = sub.add_parser("monthly")
@@ -99,7 +99,7 @@ def main() -> int:
     paths = get_paths()
 
     if not paths["ledger"].exists():
-        print(json.dumps({"status": "error", "message": "Ledger not found."}))
+        print(json.dumps({"status": "error", "message": "Ledger não encontrado."}))
         return 1
 
     events = load_events(paths["ledger"])

@@ -1,9 +1,9 @@
-# Aurum profile config — versioned in this repo.
-# Secrets (API keys, bot tokens) go in ~/.hermes/profiles/aurum/.env
+# Config do perfil Aurum — versionado neste repositório.
+# Segredos (API keys, tokens de bot) vão em ~/.hermes/profiles/aurum/.env
 
 model:
-  # Primary: lighter model (fewer 503s). Fallback: flash when lite is overloaded.
-  # Override with: aurum config set model.default <slug>
+  # Primário: modelo mais leve (menos 503). Fallback: flash quando lite estiver sobrecarregado.
+  # Sobrescrever com: aurum config set model.default <slug>
   default: gemini-2.5-flash-lite
   provider: gemini
   base_url: https://generativelanguage.googleapis.com/v1beta

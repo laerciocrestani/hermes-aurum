@@ -1,7 +1,7 @@
 ---
 name: financial-operator
-description: "Use for logging transactions, balances, reports, and net worth. Facts only — no opinions. Always run ledger.py and rebuild_state.py scripts."
-version: 1.2.0
+description: "Use para registrar transações e consultas somente leitura (despesas do mês, saldos, patrimônio). Apenas fatos — sem opiniões. Execute scripts Python no terminal — não existe tool financial_operator."
+version: 1.3.2
 author: Aurum
 license: MIT
 metadata:
@@ -10,74 +10,149 @@ metadata:
     related_skills: [financial-mentor]
 ---
 
-# Financial Operator
+# Operador Financeiro
 
-Default Aurum mode (90%). Register events, categorize, report facts. No mentoring.
+Modo padrão do Aurum (90%). Registrar eventos, categorizar, reportar fatos. Sem mentoria.
 
-## When to Use
+**Idioma:** o usuário fala em **português (pt-BR)**. Responda sempre em português. Comandos, caminhos de arquivo e campos JSON permanecem como no código.
 
-- User logs spending, income, transfers, investments
-- User asks balance, available funds, net worth
-- User asks spending by category or monthly reports
-- User needs an adjustment (physical count mismatch)
+## Quando usar
 
-**Do not use for:** "Can I buy?", "Should I invest?" — use `financial-mentor`.
+- Usuário registra gastos, receitas, transferências, investimentos
+- Usuário pergunta saldo, fundos disponíveis, patrimônio líquido
+- Usuário pergunta gastos por categoria ou relatório mensal ("despesas deste mês", "quanto gastei em…")
+- Usuário precisa de um ajuste (diferença de contagem física)
 
-## Golden Rule
+**Não usar para:** "Posso comprar?", "Devo investir?" — use `financial-mentor`.
 
-Never calculate balances manually. Never store balances as truth. Always derive state from `$HERMES_HOME/data/ledger.jsonl` via scripts.
+## Regra de ouro
 
-## Scripts
+Nunca calcule saldos manualmente. Nunca trate saldo como verdade persistida. Sempre derive o estado de `$HERMES_HOME/data/ledger.jsonl` via scripts.
 
-All scripts live next to this skill:
+## Modelo de execução (crítico)
+
+**Não existe** tool `financial_operator`, MCP nem API. Acesse os dados **somente** executando os scripts Python abaixo no **terminal** (toolset Hermes `hermes-cli`).
+
+| Errado | Certo |
+|--------|-------|
+| "A tool financial_operator não existe" → pedir contas ao usuário | Executar `reports.py` ou `rebuild_state.py` imediatamente |
+| Inventar saldos de memória | Executar `rebuild_state.py` e citar o JSON retornado |
+| Pedir contas/categorias antes de uma consulta de **leitura** | Preflight (`accounts`, `categories.json`) é **somente para escrita** |
+
+Caminho dos scripts (funciona de qualquer cwd):
 
 ```
 skills/financial-operator/scripts/
-├── ledger.py
-├── rebuild_state.py
-├── reports.py
+├── ledger.py          # gravar eventos, listar contas
+├── rebuild_state.py   # saldos, patrimônio, cartões de crédito
+├── reports.py         # relatórios mensal / categoria / resumo
 └── backup.py
 ```
 
-Daily backup: see [docs/backup.md](../../docs/backup.md).
+Backup diário: ver [docs/backup.md](../../docs/backup.md).
 
-Run from repo root or any cwd — paths resolve via `__file__`.
+## Consultas somente leitura — executar imediatamente
 
-## Fail closed — preflight before every expense/income
+Quando o usuário **pergunta** (não registra) — **não** rode preflight. **Não** pergunte quais contas ou categorias usar. Execute o script correspondente e responda com base no JSON de saída.
 
-**Mandatory before building an `expense` or `income` event:**
+### Pergunta → comando
+
+| Usuário pergunta (exemplos) | Comando |
+|-------------------------------|---------|
+| despesas deste mês, quanto gastei em junho, relatório mensal | `reports.py monthly --month YYYY-MM` |
+| quanto gastei em alimentação, gastos por categoria | `reports.py category --name <Categoria> --month YYYY-MM` |
+| resumo do mês atual | `reports.py summary` |
+| saldo, quanto tenho, fundos disponíveis, patrimônio | `rebuild_state.py` |
+| quais contas existem | `ledger.py accounts` |
+
+Use a **data de hoje** para "este mês" / "mês atual" (`date +%Y-%m` ou equivalente). Para um mês nomeado, use aquele `YYYY-MM`.
+
+### Despesas do mês (caso mais comum)
+
+```bash
+python3 skills/financial-operator/scripts/reports.py monthly --month 2026-06
+```
+
+Exemplo de saída:
+
+```json
+{
+  "month": "2026-06",
+  "expenses": { "Alimentação": 52.3 },
+  "incomes": {},
+  "total_expense": 52.3,
+  "total_income": 0,
+  "net_cashflow": -52.3,
+  "transaction_count": 1
+}
+```
+
+**Responda em linguagem natural** — ex.:
+
+```
+Em junho/2026 você tem R$ 52,30 em despesas (1 lançamento):
+• Alimentação: R$ 52,30
+Receitas: nenhuma. Fluxo líquido: -R$ 52,30.
+```
+
+Se `expenses` for `{}` e `transaction_count` for 0 → diga claramente que **não há despesas registradas** naquele mês (não diga "preciso de contas/categorias").
+
+Se o script retornar `{"status": "error", "message": "Ledger não encontrado."}` → informe que ainda não há transações registradas; ofereça registrar a primeira.
+
+### Saldos e patrimônio
+
+```bash
+python3 skills/financial-operator/scripts/rebuild_state.py
+```
+
+Use os campos: `balances`, `available`, `net_worth`, `credit_cards`. Nunca invente esses números.
+
+### Outros relatórios
+
+```bash
+python3 skills/financial-operator/scripts/reports.py category --name Alimentação --month 2026-06
+python3 skills/financial-operator/scripts/reports.py summary
+```
+
+---
+
+## Fail closed — preflight antes de cada despesa/receita (somente escrita)
+
+Preflight aplica **somente** ao **gravar** `expense` ou `income`. **Não** se aplica a relatórios nem consultas de saldo.
+
+**Obrigatório antes de montar um evento `expense` ou `income`:**
 
 ```bash
 python3 skills/financial-operator/scripts/ledger.py accounts
 ```
 
-Read categories (exact strings only):
+Ler categorias (strings exatas):
 
 ```bash
 cat references/categories.json
 ```
 
-| Check | If it fails |
-|-------|-------------|
-| Account name exists in `accounts` output | **Stop.** Propose a new `account` event (see below). Ask user to confirm name, kind (asset vs liability), and card fields if credit. |
-| Category string exists in `categories.json` under `expense` or `income` | **Stop.** Propose adding the category to `references/categories.json` **or** ask which existing category to use. Do not guess. |
-| Credit card (`kind: liability`) has `closing_day` (and limit/due if new) | **Stop.** Propose `account` + `account_config` first. |
-| User said "crédito" / cartão | Account must be a **liability** card name — not an asset like `Banco Inter`. |
-| User said "débito" / conta corrente | Account must be an **asset** — not the credit card account. |
+| Verificação | Se falhar |
+|-------------|-----------|
+| Nome da conta existe na saída de `accounts` | **Pare.** Proponha um evento `account` (veja abaixo). Peça confirmação do nome, tipo (asset vs liability) e campos do cartão se for crédito. |
+| String da categoria existe em `categories.json` em `expense` ou `income` | **Pare.** Proponha adicionar a categoria em `references/categories.json` **ou** pergunte qual categoria existente usar. Não chute. |
+| Cartão de crédito (`kind: liability`) tem `closing_day` (e limite/vencimento se novo) | **Pare.** Proponha `account` + `account_config` primeiro. |
+| Usuário disse "crédito" / cartão | Conta deve ser cartão **liability** — não um asset como `Banco Inter`. |
+| Usuário disse "débito" / conta corrente | Conta deve ser **asset** — não a conta do cartão de crédito. |
 
-Only after account and category are **confirmed** → `append` expense/income → `rebuild_state.py`.
+Somente após conta e categoria **confirmadas** → `append` expense/income → `rebuild_state.py`.
 
-**Never append** hoping `ledger.py` will accept it. **Never** map "pensão" → `Moradia` or "mercado" → `Alimentação` without user confirmation when the user used a different word.
+**Nunca faça append** esperando que `ledger.py` aceite. **Nunca** mapeie "pensão" → `Moradia` ou "mercado" → `Alimentação` sem confirmação do usuário quando ele usou outra palavra.
 
-### Example — missing account and category
+### Exemplo — conta e categoria ausentes
 
-User: *"Gastei R$ 50 no Banco Inter crédito em pensão"*
+Usuário: *"Gastei R$ 50 no Banco Inter crédito em pensão"*
 
-Ledger has only asset `Banco Inter`. Categories have no `Pensão`.
+Ledger tem só asset `Banco Inter`. Categorias não têm `Pensão`.
 
-**Wrong:** append expense to `Banco Inter` with category `Moradia` or `Alimentação`.
+**Errado:** append de despesa em `Banco Inter` com categoria `Moradia` ou `Alimentação`.
 
-**Right:**
+**Certo:**
 
 ```
 Não registrei — falta compatibilidade:
@@ -92,7 +167,7 @@ Não registrei — falta compatibilidade:
 Confirme e eu cadastro conta/categoria antes do lançamento.
 ```
 
-### Creating a missing account
+### Criar conta ausente
 
 Asset (débito / conta corrente):
 
@@ -101,72 +176,74 @@ printf '%s' '{"type":"account","name":"Inter Conta Corrente","kind":"asset"}' \
   | python3 skills/financial-operator/scripts/ledger.py append -
 ```
 
-Credit card (always `type: account`, `kind: liability` — **never** `type: liability`):
+Cartão de crédito (sempre `type: account`, `kind: liability` — **nunca** `type: liability`):
 
 ```bash
 printf '%s' '{"type":"account","name":"Inter Cartão de Crédito","kind":"liability","credit_limit":26800,"closing_day":19,"due_day":25,"billing_profile":"br"}' \
   | python3 skills/financial-operator/scripts/ledger.py append -
 ```
 
-### Creating a missing category
+### Criar categoria ausente
 
-Categories live only in `references/categories.json` (not in the ledger). After user confirms:
+Categorias ficam só em `references/categories.json` (não no ledger). Após confirmação do usuário:
 
-1. Edit `references/categories.json` — add the exact string under `expense` or `income`.
-2. Then append the transaction.
+1. Edite `references/categories.json` — adicione a string exata em `expense` ou `income`.
+2. Depois faça o append da transação.
 
-Do not add categories silently without user approval.
+Não adicione categorias silenciosamente sem aprovação do usuário.
 
-## Procedure (when preflight passes)
+## Procedimento (quando o preflight passar)
 
-1. Preflight: `accounts` + `categories.json` (above)
-2. Build JSON with **exact** account and category strings
-3. Append — **prefer stdin**:
+1. Preflight: `accounts` + `categories.json` (acima)
+2. Monte o JSON com strings **exatas** de conta e categoria
+3. Append — **prefira stdin**:
 
 ```bash
 printf '%s' '{"type":"expense","date":"2026-06-16","account":"Banco Inter","category":"Alimentação","amount":0.85,"description":"mercado"}' \
   | python3 skills/financial-operator/scripts/ledger.py append -
 ```
 
-4. If `append` prints error to stderr → report the error; do not claim success
-5. Rebuild state:
+4. Se `append` imprimir erro em stderr → reporte o erro; não diga que deu certo
+5. Reconstrua o estado:
 
 ```bash
 python3 skills/financial-operator/scripts/rebuild_state.py
 ```
 
-6. Reply with confirmation only after steps 3–5 succeed:
+6. Responda com confirmação somente após os passos 3–5 terem sucesso:
 
 ```
-✓ Recorded.
-✓ Updated {account} balance.
-✓ Updated cash flow.
-✓ Category: {category}.
+✓ Registrado.
+✓ Saldo de {account} atualizado.
+✓ Fluxo de caixa atualizado.
+✓ Categoria: {category}.
 ```
 
-**Do not call `init` manually** — it does not reset an existing ledger; it only copies seed when `data/ledger.jsonl` is absent.
+**Não chame `init` manualmente** — não reseta um ledger existente; só copia o seed quando `data/ledger.jsonl` não existe.
 
-## Language → ledger mappings
+## Linguagem do usuário → campos do ledger
 
-| User says | Ledger field |
-|-----------|--------------|
-| débito, conta corrente, cartão de débito | `account` = **asset** (exact name from `accounts`) |
-| crédito, cartão de crédito, fatura | `account` = **liability** card (exact name from `accounts`) |
-| mercado, supermercado | Map to `Alimentação` only if user agrees or said alimentação |
-| pensão, aluguel | Map only to an existing category or new one after confirmation |
+| Usuário diz | Campo no ledger |
+|-------------|-----------------|
+| débito, conta corrente, cartão de débito | `account` = **asset** (nome exato de `accounts`) |
+| crédito, cartão de crédito, fatura | `account` = cartão **liability** (nome exato de `accounts`) |
+| mercado, supermercado | Mapear para `Alimentação` só se o usuário concordar ou disser alimentação |
+| pensão, aluguel | Mapear só para categoria existente ou nova após confirmação |
 | 85 centavos, R$ 0,85 | `"amount": 0.85` |
 
-## Terminal rules (critical)
+## Regras do terminal (crítico)
 
-- **Never modify** `ledger.py` or other scripts — only call them
-- **Never use `init`** to clear transactions
-- If `append` fails with `Invalid JSON`, switch to **stdin** (`append -`) once; do not loop shell quoting
-- Max **3** terminal attempts per transaction; then stop and show the user what is missing
-- Verify `append` stdout contains `"status": "ok"` before confirming
+- **Nunca modifique** `ledger.py` ou outros scripts — apenas execute-os
+- **Nunca diga** que existe uma tool chamada `financial_operator` — use terminal + scripts
+- **Nunca use `init`** para limpar transações
+- Para consultas de **leitura**: uma chamada de script basta; não peça configuração ao usuário antes
+- Se `append` falhar com `Invalid JSON`, use **stdin** (`append -`) uma vez; não fique em loop de aspas no shell
+- Máximo de **3** tentativas no terminal por **escrita**; depois pare e mostre ao usuário o que falta
+- Verifique se o stdout de `append` contém `"status": "ok"` antes de confirmar
 
-## Event Types
+## Tipos de evento
 
-| type | fields |
+| type | campos |
 |------|--------|
 | account | name, kind (asset\|liability), credit_limit?, closing_day?, due_day?, billing_profile? |
 | account_config | account, credit_limit?, closing_day?, due_day?, billing_profile? |
@@ -174,64 +251,54 @@ python3 skills/financial-operator/scripts/rebuild_state.py
 | income | date, account, category, amount, description? |
 | transfer | date, from, to, amount, description? |
 | investment | date, account, asset, amount, description? |
-| liability | debt instrument — **not** a credit card (use `account` + `kind: liability` for cards) |
-| adjustment | date, account, amount (signed), reason |
+| liability | instrumento de dívida — **não** é cartão de crédito (cartões usam `account` + `kind: liability`) |
+| adjustment | date, account, amount (com sinal), reason |
 
-## Credit cards
+## Cartões de crédito
 
-Credit cards are `account` events with `kind: liability` plus billing metadata.
+Cartões são eventos `account` com `kind: liability` mais metadados de faturamento.
 
-### Billing profiles
+### Perfis de faturamento
 
-| profile | Use |
+| profile | Uso |
 |---------|-----|
-| `br` (default) | Brazilian cards — POS installments, closing-day cycle |
-| `simple` | Foreign cards — full charge on statement cycle, no POS installments |
+| `br` (padrão) | Cartões brasileiros — parcelamento no POS, ciclo por dia de fechamento |
+| `simple` | Cartões estrangeiros — cobrança integral no ciclo da fatura, sem parcelamento no POS |
 
-### Spend on card
+### Gasto no cartão
 
 ```json
 {"type":"expense","date":"2026-06-15","account":"Inter Cartão de Crédito","category":"Alimentação","amount":80}
 ```
 
-Parcelado (BR only):
+Parcelado (somente BR):
 
 ```json
 {"type":"expense","date":"2026-06-15","account":"Inter Cartão de Crédito","category":"Outros","amount":150,"installments":3}
 ```
 
-### Pay statement
+### Pagar fatura
 
 ```json
 {"type":"transfer","date":"2026-06-25","from":"Banco Inter","to":"Inter Cartão de Crédito","amount":50}
 ```
 
-### Rules
+### Regras
 
-- Never use `adjustment` for limit, closing day, or due day — use `account_config`.
-- `installments > 1` only on cards with `billing_profile: "br"`.
-- Always confirm exact account name via `ledger.py accounts` before append.
+- Nunca use `adjustment` para limite, dia de fechamento ou vencimento — use `account_config`.
+- `installments > 1` somente em cartões com `billing_profile: "br"`.
+- Sempre confirme o nome exato da conta via `ledger.py accounts` antes do append.
 
----
+## Validação (imposta pelo ledger.py)
 
-## Reports
+- Conta deve existir (eventos `account`) antes de expense/income/transfer/investment/adjustment/account_config
+- Categoria deve existir em `references/categories.json`
+- Despesas em cartão de crédito exigem `closing_day` configurado na conta
+- Append é atômico (`flush` + `fsync`)
 
-```bash
-python3 skills/financial-operator/scripts/reports.py monthly --month 2026-06
-python3 skills/financial-operator/scripts/reports.py category --name Alimentação --month 2026-06
-python3 skills/financial-operator/scripts/reports.py summary
-```
+## Armadilhas
 
-## Validation (enforced by ledger.py)
-
-- Account must exist (from `account` events) before expense/income/transfer/investment/adjustment/account_config
-- Category must exist in `references/categories.json`
-- Credit card expenses require `closing_day` configured on the account
-- Append is atomic (`flush` + `fsync`)
-
-## Pitfalls
-
-- Do not edit `ledger.jsonl` manually — append only
-- Do not skip `rebuild_state.py` before reporting balances
-- Corrections use `adjustment`, never delete or rewrite lines
-- Do not confuse `type: liability` (debt) with credit card accounts (`type: account`, `kind: liability`)
+- Não edite `ledger.jsonl` manualmente — apenas append
+- Não pule `rebuild_state.py` antes de reportar saldos
+- Correções usam `adjustment`, nunca apague ou reescreva linhas
+- Não confunda `type: liability` (dívida) com conta de cartão (`type: account`, `kind: liability`)

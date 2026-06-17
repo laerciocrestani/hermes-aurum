@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild financial state from append-only ledger events."""
+"""Reconstrói o estado financeiro a partir de eventos do ledger append-only."""
 
 from __future__ import annotations
 
@@ -149,7 +149,7 @@ def rebuild(events: list[dict[str, Any]], as_of: date | None = None) -> dict[str
 def main() -> int:
     paths = get_paths()
     if not paths["ledger"].exists():
-        print(json.dumps({"status": "error", "message": "Ledger not found. Record a transaction first."}))
+        print(json.dumps({"status": "error", "message": "Ledger não encontrado. Registre uma transação primeiro."}))
         return 1
     events = load_events(paths["ledger"])
     print(json.dumps(rebuild(events), ensure_ascii=False, indent=2))
