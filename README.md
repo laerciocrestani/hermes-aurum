@@ -194,7 +194,7 @@ Categorias padrão em **pt-BR**:
 
 Mantenha as chaves `expense` e `income`. Não precisa reiniciar o gateway.
 
-**Versionamento:** incremente `distribution.yaml` a cada release — veja [docs/versioning.md](docs/versioning.md).
+**Versionamento:** incremente `distribution.yaml` a cada release, crie a tag Git `vX.Y.Z` e veja o fluxo completo em [docs/versioning.md](docs/versioning.md).
 
 ## Backup
 

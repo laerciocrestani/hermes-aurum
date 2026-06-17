@@ -87,6 +87,8 @@ O Aurum visa finanças **pessoais**, não institucionais:
 2. Alinhe o design antes de PRs grandes (v2+)
 3. PRs v1.x são bem-vindos se mantiverem a regra de ouro (event-sourced, append-only)
 
+Releases versionadas: bump em `distribution.yaml`, changelog abaixo, tag Git `vX.Y.Z` — ver [docs/versioning.md](docs/versioning.md).
+
 ## Changelog
 
 | Versão | Data | Notas |
