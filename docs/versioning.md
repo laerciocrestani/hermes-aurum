@@ -109,7 +109,7 @@ git push origin --tags
 | `v1.2.2` | `685773b` | `busy_input_mode: queue` no Telegram |
 | `v1.3.0` | `d15947f` | Documentação e skills em pt-BR; consultas de leitura |
 | `v1.3.1` | `ade9a19` | Tool `terminal` explícita; Flash primário |
-| `v1.3.2` | `d9db6e7` | Wrapper `aurum-run`; resolução de ledger em múltiplos caminhos |
+| `v1.3.2` | `e2952a6` | Wrapper `aurum-run`; resolução de ledger em múltiplos caminhos |
 
 Atualize esta tabela ao publicar uma nova tag.
 
