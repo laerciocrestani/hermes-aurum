@@ -37,14 +37,27 @@ def resolve_hermes_home(profile_root: Path) -> Path:
     return profile_root.resolve()
 
 
-def resolve_ledger_path(hermes_home: Path, profile_root: Path) -> Path:
-    """Ledger: HERMES_HOME/data primeiro; depois candidatos do perfil instalado."""
+def known_ledger_paths(profile_root: Path, hermes_home: Path) -> list[Path]:
+    """Todos os caminhos conhecidos de ledger.jsonl (sem duplicatas)."""
     candidates = [
-        hermes_home / "data" / "ledger.jsonl",
         profile_root / "data" / "ledger.jsonl",
+        hermes_home / "data" / "ledger.jsonl",
         Path.home() / ".hermes" / "profiles" / "aurum" / "data" / "ledger.jsonl",
         Path.home() / ".hermes" / "data" / "ledger.jsonl",
     ]
+    seen: set[Path] = set()
+    out: list[Path] = []
+    for path in candidates:
+        resolved = path.resolve()
+        if resolved not in seen:
+            seen.add(resolved)
+            out.append(resolved)
+    return out
+
+
+def resolve_ledger_path(hermes_home: Path, profile_root: Path) -> Path:
+    """Ledger canônico: perfil Aurum primeiro (evita split com ~/.hermes/data/)."""
+    candidates = known_ledger_paths(profile_root, hermes_home)
     seen: set[Path] = set()
     for path in candidates:
         resolved = path.resolve()
@@ -67,5 +80,5 @@ def get_paths() -> dict[str, Path]:
         "seed": refs / "ledger.seed.jsonl",
         "categories": refs / "categories.json",
         "hermes_home": hermes_home,
-        "ledger": resolve_ledger_path(hermes_home, profile_root),
+        "ledger": (profile_root / "data" / "ledger.jsonl").resolve(),
     }

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from credit_card import BILLING_PROFILES, build_account_registry, is_credit_card
-from paths import get_paths
+from paths import get_paths, known_ledger_paths, resolve_profile_root, resolve_hermes_home, find_references_dir
 
 EVENT_TYPES = {
     "account",
@@ -50,6 +50,49 @@ def load_events(ledger_path: Path) -> list[dict[str, Any]]:
             except json.JSONDecodeError as exc:
                 raise ValueError(f"JSON inválido na linha {lineno}: {exc}") from exc
     return events
+
+
+def scan_ledger(ledger_path: Path) -> dict[str, Any]:
+    """Valida cada linha sem abortar no primeiro erro."""
+    if not ledger_path.exists():
+        return {
+            "path": str(ledger_path),
+            "exists": False,
+            "line_count": 0,
+            "valid_count": 0,
+            "errors": [],
+            "valid_events": [],
+        }
+
+    errors: list[dict[str, Any]] = []
+    valid_events: list[dict[str, Any]] = []
+    line_count = 0
+
+    with open(ledger_path, encoding="utf-8") as f:
+        for lineno, raw in enumerate(f, 1):
+            line = raw.strip()
+            if not line:
+                continue
+            line_count += 1
+            try:
+                valid_events.append(json.loads(line))
+            except json.JSONDecodeError as exc:
+                errors.append(
+                    {
+                        "line": lineno,
+                        "error": str(exc),
+                        "preview": line[:120],
+                    }
+                )
+
+    return {
+        "path": str(ledger_path),
+        "exists": True,
+        "line_count": line_count,
+        "valid_count": len(valid_events),
+        "errors": errors,
+        "valid_events": valid_events,
+    }
 
 
 def load_categories(categories_path: Path) -> dict[str, set[str]]:
@@ -255,6 +298,137 @@ def cmd_accounts(paths: dict[str, Path]) -> None:
     print(json.dumps({"accounts": result}, ensure_ascii=False, indent=2))
 
 
+def cmd_check(paths: dict[str, Path]) -> None:
+    from paths import resolve_ledger_path, resolve_profile_root, resolve_hermes_home, find_references_dir
+
+    refs = find_references_dir()
+    profile_root = resolve_profile_root(refs)
+    hermes_home = resolve_hermes_home(profile_root)
+    active = paths["ledger"]
+
+    candidates: list[Path] = []
+    seen: set[Path] = set()
+    for candidate in [
+        active,
+        hermes_home / "data" / "ledger.jsonl",
+        profile_root / "data" / "ledger.jsonl",
+    ]:
+        resolved = candidate.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        candidates.append(resolved)
+
+    scans = []
+    for p in candidates:
+        s = scan_ledger(p)
+        s.pop("valid_events", None)
+        scans.append(s)
+    active_scan = next((s for s in scans if Path(s["path"]) == active.resolve()), None)
+    if active_scan is None:
+        s = scan_ledger(active)
+        s.pop("valid_events", None)
+        active_scan = s
+
+    result = {
+        "status": "ok" if not active_scan["errors"] else "corrupt",
+        "ledger": active_scan,
+        "hermes_home": str(hermes_home),
+        "profile_root": str(profile_root),
+        "other_locations": [s for s in scans if Path(s["path"]) != active.resolve()],
+    }
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+def cmd_repair(paths: dict[str, Path], *, dry_run: bool) -> None:
+    ledger_path = paths["ledger"]
+    scan = scan_ledger(ledger_path)
+
+    if not scan["exists"]:
+        raise FileNotFoundError(f"Ledger não encontrado: {ledger_path}")
+
+    if not scan["errors"]:
+        print(
+            json.dumps(
+                {
+                    "status": "ok",
+                    "message": "Nenhuma linha inválida — reparo não necessário",
+                    "path": str(ledger_path),
+                    "valid_count": scan["valid_count"],
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return
+
+    backup_path = ledger_path.with_suffix(".jsonl.bak")
+    if not dry_run:
+        shutil.copy2(ledger_path, backup_path)
+        with open(ledger_path, "w", encoding="utf-8") as f:
+            for event in scan["valid_events"]:
+                f.write(json.dumps(event, ensure_ascii=False) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+
+    print(
+        json.dumps(
+            {
+                "status": "ok" if not dry_run else "dry_run",
+                "path": str(ledger_path),
+                "backup": str(backup_path) if not dry_run else None,
+                "removed_lines": len(scan["errors"]),
+                "kept_events": scan["valid_count"],
+                "errors": scan["errors"],
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+
+def cmd_reset(paths: dict[str, Path], *, confirm: bool) -> None:
+    if not confirm:
+        raise ValueError("Reset destrutivo — confirme com --confirm")
+
+    profile_root = paths["profile_root"]
+    hermes_home = paths["hermes_home"]
+    target = (profile_root / "data" / "ledger.jsonl").resolve()
+    seed = paths["seed"]
+    if not seed.is_file():
+        raise FileNotFoundError(f"Arquivo seed não encontrado: {seed}")
+
+    backups: list[str] = []
+    removed: list[str] = []
+
+    for ledger_path in known_ledger_paths(profile_root, hermes_home):
+        if ledger_path.is_file():
+            stamp = ledger_path.name + ".bak.reset"
+            backup_path = ledger_path.with_name(stamp)
+            shutil.copy2(ledger_path, backup_path)
+            backups.append(str(backup_path))
+            ledger_path.unlink()
+            removed.append(str(ledger_path))
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(seed, target)
+
+    print(
+        json.dumps(
+            {
+                "status": "ok",
+                "message": "Ledger zerado a partir do seed",
+                "ledger": str(target),
+                "seed": str(seed),
+                "backups": backups,
+                "removed": removed,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Ledger append-only do Aurum")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -272,6 +446,21 @@ def main() -> int:
 
     sub.add_parser("accounts")
 
+    sub.add_parser("check")
+    p_repair = sub.add_parser("repair")
+    p_repair.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Mostra o que seria removido sem alterar o arquivo",
+    )
+
+    p_reset = sub.add_parser("reset")
+    p_reset.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Apaga ledgers conhecidos e recria do seed (faz backup .bak.reset)",
+    )
+
     args = parser.parse_args()
     paths = get_paths()
 
@@ -284,6 +473,12 @@ def main() -> int:
             cmd_list(paths, args.etype, args.month)
         elif args.command == "accounts":
             cmd_accounts(paths)
+        elif args.command == "check":
+            cmd_check(paths)
+        elif args.command == "repair":
+            cmd_repair(paths, dry_run=args.dry_run)
+        elif args.command == "reset":
+            cmd_reset(paths, confirm=args.confirm)
         return 0
     except (ValueError, FileNotFoundError) as exc:
         print(json.dumps({"status": "error", "message": str(exc)}), file=sys.stderr)

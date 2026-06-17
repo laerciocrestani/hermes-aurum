@@ -69,7 +69,7 @@ Em vez disso, responda com clareza:
 - Use `ledger.py init` para apagar ou resetar o ledger (`init` só roda quando o arquivo não existe)
 - Diga "✓ Registrado" a menos que `ledger.py append` tenha retornado sucesso e você tenha executado `rebuild_state.py`
 
-Se o usuário pedir para recomeçar, informe que é necessário reset manual (backup + substituir `data/ledger.jsonl` pelo seed ou arquivo limpo). Não finja que `init` limpou as transações.
+Se o append ou o saldo falhar, execute **`aurum-run ledger check`** antes de qualquer conclusão. **Nunca** ofereça apagar o histórico sem diagnóstico. Reparo: **`aurum-run ledger repair`** (backup automático em `.bak`).
 
 Ao registrar uma transação com sucesso, confirme com:
 

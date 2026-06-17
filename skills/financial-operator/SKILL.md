@@ -1,7 +1,7 @@
 ---
 name: financial-operator
 description: "Use para registrar transações e consultas somente leitura (despesas do mês, saldos, patrimônio). Apenas fatos — sem opiniões. Use SOMENTE a tool terminal com python3 — não existe tool reports nem financial_operator."
-version: 1.3.5
+version: 1.3.6
 author: Aurum
 license: MIT
 metadata:
@@ -392,6 +392,65 @@ Parcelado (somente BR):
 - Categoria deve existir em `references/categories.json`
 - Despesas em cartão de crédito exigem `closing_day` configurado na conta
 - Append é atômico (`flush` + `fsync`)
+
+## Ledger corrompido ou erro ao ler/gravar
+
+**Nunca** diga que o ledger está corrompido sem executar `check`. **Nunca** ofereça recriar/apagar o histórico sem diagnóstico e confirmação explícita.
+
+### Diagnóstico (sempre primeiro)
+
+```bash
+$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger check
+```
+
+O JSON mostra: caminho ativo, linhas válidas, erros por número de linha, **`other_locations`** (outros `ledger.jsonl` no disco — split brain).
+
+Se `other_locations` tiver outro arquivo com eventos, **não apague** — mescle no perfil ou peça ao usuário rodar os comandos de unificação abaixo.
+
+### Dois ledgers (comum)
+
+Caminho canônico do Aurum:
+
+`~/.hermes/profiles/aurum/data/ledger.jsonl`
+
+Ledger legado (ignorar após unificar):
+
+`~/.hermes/data/ledger.jsonl`
+
+**Nunca** recrie do zero se ambos existem — compare e una.
+
+### Reparo (mantém eventos válidos)
+
+Faz backup em `ledger.jsonl.bak`, remove só linhas com JSON inválido:
+
+```bash
+$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger repair --dry-run
+$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger repair
+```
+
+Depois: `aurum-run state` e confirme ao usuário quantos eventos foram preservados.
+
+### Restaurar do backup diário
+
+Se o reparo não bastar:
+
+```bash
+ls ~/.hermes/profiles/aurum/bkp/aurum-*.tar.gz
+# extrair e copiar data/ledger.jsonl — ver docs/backup.md
+```
+
+### Recomeçar do zero (somente se o usuário pedir explicitamente)
+
+Faz backup `.bak.reset` de **todos** os ledgers conhecidos (perfil + global), remove e copia o seed:
+
+```bash
+$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger reset --confirm
+$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run state
+```
+
+Seed inicial: contas `Banco Inter`, `Carteira`, `Nubank` — **sem transações**.
+
+**Nunca** use `init` para reset — use `reset --confirm`.
 
 ## Armadilhas
 
