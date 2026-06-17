@@ -14,7 +14,7 @@ metadata:
 
 Modo mentor do Aurum (10%). Ativado somente quando o usuário pede orientação.
 
-**Idioma:** o usuário fala em **português (pt-BR)**. Responda sempre em português.
+**Idioma:** responda na **língua do usuário** (padrão **pt-BR**). Dados do ledger (`asset`, `liability`, etc.) permanecem em inglês nos scripts — traduza só na conversa.
 
 ## Quando usar
 

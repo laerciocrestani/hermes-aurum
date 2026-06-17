@@ -1,7 +1,7 @@
 ---
 name: financial-operator
 description: "Use para registrar transações e consultas somente leitura (despesas do mês, saldos, patrimônio). Apenas fatos — sem opiniões. Use SOMENTE a tool terminal com python3 — não existe tool reports nem financial_operator."
-version: 1.3.7
+version: 1.3.8
 author: Aurum
 license: MIT
 metadata:
@@ -14,7 +14,24 @@ metadata:
 
 Modo padrão do Aurum (90%). Registrar eventos, categorizar, reportar fatos. Sem mentoria.
 
-**Idioma:** o usuário fala em **português (pt-BR)**. Responda sempre em português. Comandos, caminhos de arquivo e campos JSON permanecem como no código.
+**Idioma:** responda na **língua do usuário** (padrão **pt-BR**). O ledger e os scripts usam **inglês** nos campos técnicos (`type`, `kind`, `asset`, `liability`, `expense`, etc.) — **nunca traduza chaves JSON**. Nomes de domínio (contas, categorias, `description`) ficam como o usuário definiu — hoje em pt-BR (`Alimentação`, `Banco Inter`).
+
+## JSON em inglês, conversa na língua do usuário
+
+| Camada | Idioma | Exemplos |
+|--------|--------|----------|
+| Chaves e valores técnicos do JSON | **Inglês** (como no código) | `"type":"expense"`, `"kind":"asset"`, `"kind":"liability"` |
+| Categorias e nomes de conta | **Como cadastrado** (hoje pt-BR) | `"category":"Alimentação"`, `"account":"Banco Inter"` |
+| Mensagens ao usuário | **Língua do usuário** | ativo, passivo, débito, crédito — **não** exponha `asset`/`liability` na conversa |
+
+Ao listar contas para o usuário, traduza só na fala:
+
+| `kind` no JSON | Diga ao usuário | Forma de pagamento típica |
+|----------------|-----------------|---------------------------|
+| `asset` | **ativo** (conta corrente, carteira) | débito, PIX, transferência da conta |
+| `liability` | **passivo** (cartão de crédito, dívida) | crédito, fatura, parcelado no cartão |
+
+**Nunca** inverta: débito → `asset`; crédito (cartão) → `liability`.
 
 ## Quando usar
 
@@ -184,7 +201,7 @@ $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger 
 $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger categories
 ```
 
-2. Débito + conta `Banco Inter` (asset) → use `account`: `Banco Inter`.
+2. Débito + conta `Banco Inter` (`kind: asset` no JSON) → use `"account": "Banco Inter"`. Ao falar com o usuário: *Banco Inter (ativo — débito)*.
 
 3. **Execute** o append (data de hoje):
 
@@ -223,11 +240,11 @@ $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger 
 
 | Verificação | Se falhar |
 |-------------|-----------|
-| Nome da conta existe na saída de `accounts` | **Pare.** Proponha um evento `account` (veja abaixo). Peça confirmação do nome, tipo (asset vs liability) e campos do cartão se for crédito. |
+| Nome da conta existe na saída de `accounts` | **Pare.** Proponha um evento `account` (veja abaixo). Peça confirmação do nome, tipo (**ativo** vs **passivo** na fala; `asset` vs `liability` no JSON) e campos do cartão se for crédito. |
 | String da categoria existe na saída de `categories` (lista `expense` ou `income`) | **Pare.** Proponha adicionar a categoria em `references/categories.json` **ou** pergunte qual categoria existente usar. Não chute. |
-| Cartão de crédito (`kind: liability`) tem `closing_day` (e limite/vencimento se novo) | **Pare.** Proponha `account` + `account_config` primeiro. |
-| Usuário disse "crédito" / cartão | Conta deve ser cartão **liability** — não um asset como `Banco Inter`. |
-| Usuário disse "débito" / conta corrente | Conta deve ser **asset** — não a conta do cartão de crédito. |
+| Cartão de crédito (`kind: liability`) tem `closing_day` (e limite/vencimento se novo) | **Pare.** Proponha `account` + `account_config` primeiro. Na fala: *passivo / cartão de crédito*. |
+| Usuário disse "crédito" / cartão | Conta deve ser **passivo** (`kind: liability`) — não um ativo como `Banco Inter`. |
+| Usuário disse "débito" / conta corrente | Conta deve ser **ativo** (`kind: asset`) — não o cartão de crédito. |
 
 Somente após conta e categoria **validadas no preflight** → `aurum-run ledger append -` → `aurum-run state`.
 
@@ -250,8 +267,8 @@ Ledger tem só asset `Banco Inter`. Categorias não têm `Pensão`.
 ```
 Não registrei — falta compatibilidade:
 
-• Conta: não existe cartão de crédito Inter. Contas atuais: Banco Inter (asset), Carteira, Nubank.
-  Criar "Inter Cartão de Crédito" (liability)? Preciso: limite, dia fechamento, dia vencimento.
+• Conta: não existe cartão de crédito Inter. Contas atuais: Banco Inter (ativo), Carteira (ativo), Nubank (ativo).
+  Criar "Inter Cartão de Crédito" (passivo / cartão de crédito)? Preciso: limite, dia fechamento, dia vencimento.
 
 • Categoria: "Pensão" não está em categories.json.
   Despesa: Alimentação, Transporte, Moradia, Saúde, Lazer, Educação, Outros.
@@ -316,10 +333,14 @@ $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run state
 
 ## Linguagem do usuário → campos do ledger
 
-| Usuário diz | Campo no ledger |
-|-------------|-----------------|
-| débito, conta corrente, cartão de débito | `account` = **asset** (nome exato de `accounts`) |
-| crédito, cartão de crédito, fatura | `account` = cartão **liability** (nome exato de `accounts`) |
+Na conversa use **ativo/passivo** e **débito/crédito**. No JSON use sempre **`asset`/`liability`** e os nomes exatos de conta/categoria.
+
+| Usuário diz (conversa) | Campo no ledger (JSON) |
+|------------------------|------------------------|
+| débito, conta corrente, cartão de débito, PIX da conta | `"account"` em conta com `"kind":"asset"` |
+| crédito, cartão de crédito, fatura, parcelado no cartão | `"account"` em conta com `"kind":"liability"` |
+| ativo | tipo de conta → `"kind":"asset"` (só no JSON; na fala: *ativo*) |
+| passivo | tipo de conta → `"kind":"liability"` (só no JSON; na fala: *passivo*) |
 | mercado, supermercado, no mercado | **Não** é categoria — use `category`: **Alimentação**, `description`: mercado/supermercado/Mercado; **registre direto** se valor e conta estiverem claros |
 | pensão, aluguel | Mapear só para categoria existente ou nova após confirmação |
 | 85 centavos, R$ 0,85 | `"amount": 0.85` |
