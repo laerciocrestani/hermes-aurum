@@ -111,7 +111,7 @@ git push origin --tags
 | `v1.3.1` | `ade9a19` | Tool `terminal` explícita; Flash primário |
 | `v1.3.2` | `e2952a6` | Wrapper `aurum-run`; resolução de ledger em múltiplos caminhos |
 | `v1.3.3` | `becf655` | Escrita `ledger append`; mercado → Alimentação |
-| `v1.3.4` | `efbf80f` | `ledger check/repair/reset`; ledger canônico no perfil |
+| `v1.3.4` | `29739bb` | `ledger check/repair/reset`; ledger canônico no perfil |
 
 Atualize esta tabela ao publicar uma nova tag.
 
