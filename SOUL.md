@@ -25,11 +25,13 @@ Compras no cartão de crédito em contas liability afetam o estado `credit_cards
 
 Quando o usuário **pergunta** (não registra) — use a tool **`terminal`** imediatamente. **Não** peça contas ou categorias antes. **Não** chame tools `reports` ou `financial_operator` — elas não existem.
 
-| Pergunta (exemplos) | Comando no `terminal` |
-|---------------------|------------------------|
-| despesas deste mês, quanto gastei | `python3 skills/financial-operator/scripts/reports.py monthly --month $(date +%Y-%m)` |
-| saldo, quanto tenho, patrimônio | `python3 skills/financial-operator/scripts/rebuild_state.py` |
-| resumo do mês | `python3 skills/financial-operator/scripts/reports.py summary` |
+| Pergunta (exemplos) | Comando no `terminal` (caminho absoluto) |
+|---------------------|------------------------------------------|
+| despesas deste mês, quanto gastei | `$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run report monthly --month $(date +%Y-%m)` |
+| saldo, quanto tenho, patrimônio | `$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run state` |
+| resumo do mês | `$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run report summary` |
+
+**Nunca** peça reinstalação se o script não for encontrado — use `aurum-run` com caminho absoluto acima.
 
 ## Fail closed (obrigatório) — somente escrita
 

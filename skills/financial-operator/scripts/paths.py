@@ -24,14 +24,48 @@ def find_references_dir(start: Path | None = None) -> Path:
     )
 
 
+def resolve_profile_root(refs: Path) -> Path:
+    """Raiz do perfil Aurum (pai de references/)."""
+    return refs.parent
+
+
+def resolve_hermes_home(profile_root: Path) -> Path:
+    """HERMES_HOME efetivo: env explícito ou raiz do perfil."""
+    raw = os.environ.get("HERMES_HOME", "").strip()
+    if raw:
+        return Path(raw).expanduser().resolve()
+    return profile_root.resolve()
+
+
+def resolve_ledger_path(hermes_home: Path, profile_root: Path) -> Path:
+    """Ledger: HERMES_HOME/data primeiro; depois candidatos do perfil instalado."""
+    candidates = [
+        hermes_home / "data" / "ledger.jsonl",
+        profile_root / "data" / "ledger.jsonl",
+        Path.home() / ".hermes" / "profiles" / "aurum" / "data" / "ledger.jsonl",
+        Path.home() / ".hermes" / "data" / "ledger.jsonl",
+    ]
+    seen: set[Path] = set()
+    for path in candidates:
+        resolved = path.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        if resolved.is_file():
+            return resolved
+    return (profile_root / "data" / "ledger.jsonl").resolve()
+
+
 def get_paths() -> dict[str, Path]:
     refs = find_references_dir()
-    repo_root = refs.parent
-    hermes_home = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
+    profile_root = resolve_profile_root(refs)
+    hermes_home = resolve_hermes_home(profile_root)
     return {
-        "repo_root": repo_root,
+        "repo_root": profile_root,
+        "profile_root": profile_root,
         "references": refs,
         "seed": refs / "ledger.seed.jsonl",
         "categories": refs / "categories.json",
-        "ledger": hermes_home / "data" / "ledger.jsonl",
+        "hermes_home": hermes_home,
+        "ledger": resolve_ledger_path(hermes_home, profile_root),
     }

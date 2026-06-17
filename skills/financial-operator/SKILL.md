@@ -1,7 +1,7 @@
 ---
 name: financial-operator
 description: "Use para registrar transações e consultas somente leitura (despesas do mês, saldos, patrimônio). Apenas fatos — sem opiniões. Use SOMENTE a tool terminal com python3 — não existe tool reports nem financial_operator."
-version: 1.3.3
+version: 1.3.4
 author: Aurum
 license: MIT
 metadata:
@@ -45,31 +45,46 @@ No Hermes, a **única** ferramenta para rodar scripts é **`terminal`** (parâme
 
 ### Exemplo — "Quanto gastei neste mês?"
 
-**Primeira ação:** uma chamada à tool **`terminal`** (não outra tool):
+**Primeira ação:** tool **`terminal`** com caminho **absoluto** via `aurum-run` (não use caminho relativo `skills/...` — o cwd do gateway não é o perfil):
 
 ```json
 {
-  "command": "python3 skills/financial-operator/scripts/reports.py monthly --month $(date +%Y-%m)"
+  "command": "$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run report monthly --month $(date +%Y-%m)"
 }
 ```
 
-Se o caminho relativo falhar, use o absoluto do perfil:
+Se o perfil não estiver em `profiles/aurum`, localize o wrapper:
 
 ```json
 {
-  "command": "python3 \"$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/reports.py\" monthly --month $(date +%Y-%m)"
+  "command": "AURUM_RUN=$(find \"$HOME/.hermes/profiles\" -path '*/financial-operator/scripts/aurum-run' -type f 2>/dev/null | head -1) && test -n \"$AURUM_RUN\" && \"$AURUM_RUN\" report monthly --month $(date +%Y-%m)"
 }
 ```
 
-Leia o JSON do stdout e responda em português. **Não** tente outra tool se a primeira falhar por nome — corrija para `terminal`.
+Leia o JSON do stdout e responda em português.
 
-Caminho dos scripts (funciona de qualquer cwd):
+**Nunca** peça reinstalação ao usuário quando o script não for encontrado — o problema é caminho relativo; use `aurum-run` com caminho absoluto acima.
+
+### Comandos canônicos (`aurum-run`)
+
+| Ação | `terminal` → `command` |
+|------|-------------------------|
+| Despesas do mês | `$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run report monthly --month $(date +%Y-%m)` |
+| Resumo do mês | `.../aurum-run report summary` |
+| Saldo / patrimônio | `.../aurum-run state` |
+| Listar contas | `.../aurum-run ledger accounts` |
+| Gravar despesa | `.../aurum-run ledger append -` (stdin) |
+
+O `aurum-run` define `HERMES_HOME` na raiz do perfil automaticamente.
+
+Caminho dos scripts (referência — **não** use relativo no terminal):
 
 ```
 skills/financial-operator/scripts/
-├── ledger.py          # gravar eventos, listar contas
-├── rebuild_state.py   # saldos, patrimônio, cartões de crédito
-├── reports.py         # relatórios mensal / categoria / resumo
+├── aurum-run          # ← USE ESTE no terminal (caminho absoluto)
+├── ledger.py
+├── rebuild_state.py
+├── reports.py
 └── backup.py
 ```
 
@@ -83,18 +98,20 @@ Quando o usuário **pergunta** (não registra) — **não** rode preflight. **N�
 
 | Usuário pergunta (exemplos) | Comando |
 |-------------------------------|---------|
-| despesas deste mês, quanto gastei em junho, relatório mensal | `reports.py monthly --month YYYY-MM` |
-| quanto gastei em alimentação, gastos por categoria | `reports.py category --name <Categoria> --month YYYY-MM` |
-| resumo do mês atual | `reports.py summary` |
-| saldo, quanto tenho, fundos disponíveis, patrimônio | `rebuild_state.py` |
-| quais contas existem | `ledger.py accounts` |
+| despesas deste mês, quanto gastei em junho, relatório mensal | `aurum-run report monthly --month YYYY-MM` (caminho absoluto) |
+| quanto gastei em alimentação, gastos por categoria | `aurum-run report category --name <Categoria> --month YYYY-MM` |
+| resumo do mês atual | `aurum-run report summary` |
+| saldo, quanto tenho, fundos disponíveis, patrimônio | `aurum-run state` |
+| quais contas existem | `aurum-run ledger accounts` |
+
+Prefixo absoluto padrão: `$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run`
 
 Use a **data de hoje** para "este mês" / "mês atual" (`date +%Y-%m` ou equivalente). Para um mês nomeado, use aquele `YYYY-MM`.
 
 ### Despesas do mês (caso mais comum)
 
 ```bash
-python3 skills/financial-operator/scripts/reports.py monthly --month 2026-06
+$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run report monthly --month 2026-06
 ```
 
 Exemplo de saída:
@@ -126,7 +143,7 @@ Se o script retornar `{"status": "error", "message": "Ledger não encontrado."}`
 ### Saldos e patrimônio
 
 ```bash
-python3 skills/financial-operator/scripts/rebuild_state.py
+$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run state
 ```
 
 Use os campos: `balances`, `available`, `net_worth`, `credit_cards`. Nunca invente esses números.
@@ -134,8 +151,8 @@ Use os campos: `balances`, `available`, `net_worth`, `credit_cards`. Nunca inven
 ### Outros relatórios
 
 ```bash
-python3 skills/financial-operator/scripts/reports.py category --name Alimentação --month 2026-06
-python3 skills/financial-operator/scripts/reports.py summary
+$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run report category --name Alimentação --month 2026-06
+$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run report summary
 ```
 
 ---
@@ -147,7 +164,7 @@ Preflight aplica **somente** ao **gravar** `expense` ou `income`. **Não** se ap
 **Obrigatório antes de montar um evento `expense` ou `income`:**
 
 ```bash
-python3 skills/financial-operator/scripts/ledger.py accounts
+$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger accounts
 ```
 
 Ler categorias (strings exatas):
@@ -197,14 +214,14 @@ Asset (débito / conta corrente):
 
 ```bash
 printf '%s' '{"type":"account","name":"Inter Conta Corrente","kind":"asset"}' \
-  | python3 skills/financial-operator/scripts/ledger.py append -
+  | $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger append -
 ```
 
 Cartão de crédito (sempre `type: account`, `kind: liability` — **nunca** `type: liability`):
 
 ```bash
 printf '%s' '{"type":"account","name":"Inter Cartão de Crédito","kind":"liability","credit_limit":26800,"closing_day":19,"due_day":25,"billing_profile":"br"}' \
-  | python3 skills/financial-operator/scripts/ledger.py append -
+  | $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger append -
 ```
 
 ### Criar categoria ausente
@@ -224,14 +241,14 @@ Não adicione categorias silenciosamente sem aprovação do usuário.
 
 ```bash
 printf '%s' '{"type":"expense","date":"2026-06-16","account":"Banco Inter","category":"Alimentação","amount":0.85,"description":"mercado"}' \
-  | python3 skills/financial-operator/scripts/ledger.py append -
+  | $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger append -
 ```
 
 4. Se `append` imprimir erro em stderr → reporte o erro; não diga que deu certo
 5. Reconstrua o estado:
 
 ```bash
-python3 skills/financial-operator/scripts/rebuild_state.py
+$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run state
 ```
 
 6. Responda com confirmação somente após os passos 3–5 terem sucesso:

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Aurum — ponto de entrada único para scripts (caminho absoluto, HERMES_HOME do perfil).
+# Uso: aurum-run report monthly --month 2026-06
+#      aurum-run ledger accounts
+#      aurum-run state
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROFILE="$(cd "$HERE/../../.." && pwd)"
+export HERMES_HOME="${HERMES_HOME:-$PROFILE}"
+
+cmd="${1:?uso: aurum-run report|ledger|state|backup}"
+shift
+
+case "$cmd" in
+  report|reports)
+    exec python3 "$HERE/reports.py" "$@"
+    ;;
+  ledger)
+    exec python3 "$HERE/ledger.py" "$@"
+    ;;
+  state|rebuild|rebuild_state)
+    exec python3 "$HERE/rebuild_state.py" "$@"
+    ;;
+  backup)
+    exec python3 "$HERE/backup.py" "$@"
+    ;;
+  *)
+    echo '{"status":"error","message":"Comando aurum-run desconhecido — use report, ledger, state ou backup"}' >&2
+    exit 1
+    ;;
+esac
