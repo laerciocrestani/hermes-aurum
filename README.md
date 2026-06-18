@@ -171,6 +171,9 @@ hermes-aurum/
     ├── financial-operator/
     │   ├── SKILL.md
     │   └── scripts/
+    │       ├── aurum-run      # entrada única (hint, do, legado)
+    │       ├── catalog.py     # catálogo de intenções
+    │       ├── do.py          # dispatcher hint/help/do
     │       ├── ledger.py
     │       ├── rebuild_state.py
     │       ├── reports.py
@@ -187,12 +190,30 @@ Categorias padrão em **pt-BR**:
 
 ```json
 {
-  "expense": ["Alimentação", "Transporte", "Moradia", "Saúde", "Lazer", "Educação", "Outros"],
+  "expense": ["Alimentação", "Transporte", "Moradia", "Saúde", "Lazer", "Educação", "Vestuário", "Outros"],
   "income": ["Salário", "Freelance", "Investimentos", "Outros"]
 }
 ```
 
 Mantenha as chaves `expense` e `income`. Não precisa reiniciar o gateway.
+
+## Intenções vs comandos legados (v1.4+)
+
+O agente usa **`aurum-run`** como ponto de entrada. Preferência por intenções; comandos legados continuam disponíveis.
+
+| Ação | Comando recomendado |
+|------|---------------------|
+| Não sabe o comando | `aurum-run hint "<pergunta do usuário>"` |
+| Catálogo completo | `aurum-run help --json` |
+| Listar contas | `aurum-run do list-accounts` |
+| Despesas do mês | `aurum-run do monthly-report` |
+| Saldo / patrimônio | `aurum-run do balances` |
+| Registrar despesa | `aurum-run do record-expense '<json>'` |
+| Transferência | `aurum-run do record-transfer '<json>'` |
+| Pagamento misto | `aurum-run do record-mixed-expense '<json>'` |
+| Nova categoria / conta | `aurum-run do add-category` / `add-account` |
+
+Legado: `aurum-run report …`, `aurum-run ledger …`, `aurum-run state`.
 
 **Versionamento:** incremente `distribution.yaml` a cada release, crie a tag Git `vX.Y.Z` e veja o fluxo completo em [docs/versioning.md](docs/versioning.md).
 

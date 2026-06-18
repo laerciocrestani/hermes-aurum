@@ -1,18 +1,33 @@
 #!/usr/bin/env bash
 # Aurum — ponto de entrada único para scripts (caminho absoluto, HERMES_HOME do perfil).
-# Uso: aurum-run report monthly --month 2026-06
-#      aurum-run ledger accounts
-#      aurum-run state
+# Uso: aurum-run hint "listar contas"
+#      aurum-run do list-accounts
+#      aurum-run report monthly --month 2026-06
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROFILE="$(cd "$HERE/../../.." && pwd)"
 export HERMES_HOME="${HERMES_HOME:-$PROFILE}"
 
-cmd="${1:?uso: aurum-run report|ledger|accounts|categories|state|append|backup}"
+_unknown() {
+  local cmd="$1"
+  python3 -c "import json,sys; print(json.dumps({'status':'error','message':f'Comando aurum-run desconhecido: {sys.argv[1]}','suggestion':'aurum-run hint \"listar contas\"','help':'aurum-run help --json'}, ensure_ascii=False))" "$cmd" >&2
+  exit 1
+}
+
+cmd="${1:?uso: aurum-run hint|help|do|report|ledger|accounts|state|backup}"
 shift
 
 case "$cmd" in
+  hint)
+    exec python3 "$HERE/do.py" hint "$@"
+    ;;
+  help)
+    exec python3 "$HERE/do.py" help "$@"
+    ;;
+  do)
+    exec python3 "$HERE/do.py" run "$@"
+    ;;
   report|reports)
     exec python3 "$HERE/reports.py" "$@"
     ;;
@@ -32,7 +47,6 @@ case "$cmd" in
     exec python3 "$HERE/backup.py" "$@"
     ;;
   *)
-    echo '{"status":"error","message":"Comando aurum-run desconhecido — use report, ledger, accounts, categories, append, state ou backup"}' >&2
-    exit 1
+    _unknown "$cmd"
     ;;
 esac

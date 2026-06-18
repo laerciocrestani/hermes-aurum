@@ -283,19 +283,43 @@ def cmd_list(paths: dict[str, Path], etype: str | None, month: str | None) -> No
 
 
 def cmd_accounts(paths: dict[str, Path]) -> None:
-    events = load_events(paths["ledger"])
+    ledger_path = paths["ledger"]
+    init_ledger(ledger_path, paths["seed"])
+
+    events = load_events(ledger_path)
     registry = build_account_registry(events)
-    result = []
+    result: list[dict[str, Any]] = []
+    debit: list[str] = []
+    credit: list[str] = []
+
     for name in sorted(account_names(events)):
         info = registry.get(name)
-        entry: dict[str, Any] = {"name": name, "kind": info.kind if info else "asset"}
+        kind = info.kind if info else "asset"
+        entry: dict[str, Any] = {"name": name, "kind": kind}
         if info and info.kind == "liability":
             for key in CONFIG_FIELDS:
                 value = getattr(info, key, None)
                 if value is not None:
                     entry[key] = value
+            credit.append(name)
+        else:
+            debit.append(name)
         result.append(entry)
-    print(json.dumps({"accounts": result}, ensure_ascii=False, indent=2))
+
+    print(
+        json.dumps(
+            {
+                "status": "ok",
+                "ledger": str(ledger_path),
+                "account_count": len(result),
+                "debit": debit,
+                "credit": credit,
+                "accounts": result,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
 
 
 def cmd_categories(paths: dict[str, Path]) -> None:

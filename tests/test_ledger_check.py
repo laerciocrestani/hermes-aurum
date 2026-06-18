@@ -105,7 +105,7 @@ class LedgerCheckTests(unittest.TestCase):
 
             cmd_reset(paths, confirm=True)
             lines = (data / "ledger.jsonl").read_text(encoding="utf-8").strip().splitlines()
-            self.assertEqual(len(lines), 3)
+            self.assertEqual(len(lines), 4)
             self.assertTrue(all('"type":"account"' in line or '"type": "account"' in line for line in lines))
 
 

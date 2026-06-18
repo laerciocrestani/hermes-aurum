@@ -1,3 +1,4 @@
 {"type":"account","name":"Banco Inter","kind":"asset"}
 {"type":"account","name":"Carteira","kind":"asset"}
 {"type":"account","name":"Nubank","kind":"asset"}
+{"type":"account","name":"Inter Cartão de Crédito","kind":"liability","credit_limit":26800,"closing_day":19,"due_day":25,"billing_profile":"br"}

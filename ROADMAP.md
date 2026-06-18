@@ -93,6 +93,8 @@ Releases versionadas: bump em `distribution.yaml`, changelog abaixo, tag Git `vX
 
 | Versão | Data | Notas |
 |--------|------|-------|
+| v1.4.1 | 2026-06-17 | `record-transfer`, `record-mixed-expense`, `add-category/account`; cartão Inter no seed; Vestuário |
+| v1.4.0 | 2026-06-17 | `hint` + `do <intent>` + skill enxuta; `accounts` com débito/crédito; helper obrigatório |
 | v1.3.4 | 2026-06-17 | `ledger check` e `ledger repair` — diagnóstico sem apagar histórico |
 | v1.3.2 | 2026-06-17 | Wrapper `aurum-run`; resolução de ledger em múltiplos HERMES_HOME |
 | v1.3.1 | 2026-06-17 | Skill: tool `terminal` explícita (não `reports`); Flash primário para tool calling |

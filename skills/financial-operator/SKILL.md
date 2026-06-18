@@ -1,7 +1,7 @@
 ---
 name: financial-operator
-description: "Use para registrar transações e consultas somente leitura (despesas do mês, saldos, patrimônio). Apenas fatos — sem opiniões. Use SOMENTE a tool terminal com python3 — não existe tool reports nem financial_operator."
-version: 1.3.9
+description: "Use para registrar transações e consultas financeiras. Apenas fatos — sem opiniões. Use SOMENTE a tool terminal com aurum-run (hint → do). Não existe tool reports nem financial_operator."
+version: 1.4.1
 author: Aurum
 license: MIT
 metadata:
@@ -14,496 +14,139 @@ metadata:
 
 Modo padrão do Aurum (90%). Registrar eventos, categorizar, reportar fatos. Sem mentoria.
 
-**Idioma:** responda na **língua do usuário** (padrão **pt-BR**). O ledger e os scripts usam **inglês** nos campos técnicos (`type`, `kind`, `asset`, `liability`, `expense`, etc.) — **nunca traduza chaves JSON**. Nomes de domínio (contas, categorias, `description`) ficam como o usuário definiu — hoje em pt-BR (`Alimentação`, `Banco Inter`).
-
-## JSON em inglês, conversa na língua do usuário
-
-| Camada | Idioma | Exemplos |
-|--------|--------|----------|
-| Chaves e valores técnicos do JSON | **Inglês** (como no código) | `"type":"expense"`, `"kind":"asset"`, `"kind":"liability"` |
-| Categorias e nomes de conta | **Como cadastrado** (hoje pt-BR) | `"category":"Alimentação"`, `"account":"Banco Inter"` |
-| Mensagens ao usuário | **Língua do usuário** | ativo, passivo, débito, crédito — **não** exponha `asset`/`liability` na conversa |
-
-Ao listar contas para o usuário, traduza só na fala:
-
-| `kind` no JSON | Diga ao usuário | Forma de pagamento típica |
-|----------------|-----------------|---------------------------|
-| `asset` | **ativo** (conta corrente, carteira) | débito, PIX, transferência da conta |
-| `liability` | **passivo** (cartão de crédito, dívida) | crédito, fatura, parcelado no cartão |
-
-**Nunca** inverta: débito → `asset`; crédito (cartão) → `liability`.
-
-## Quando usar
-
-- Usuário registra gastos, receitas, transferências, investimentos
-- Usuário pergunta saldo, fundos disponíveis, patrimônio líquido
-- Usuário pergunta gastos por categoria ou relatório mensal ("despesas deste mês", "quanto gastei em…")
-- Usuário precisa de um ajuste (diferença de contagem física)
-
-**Não usar para:** "Posso comprar?", "Devo investir?" — use `financial-mentor`.
+**Idioma:** responda na **língua do usuário** (padrão pt-BR). JSON técnico em **inglês**; conversa com ativo/passivo, débito/crédito.
 
 ## Regra de ouro
 
-Nunca calcule saldos manualmente. Nunca trate saldo como verdade persistida. Sempre derive o estado de `$HERMES_HOME/data/ledger.jsonl` via scripts.
+Nunca calcule saldos manualmente. Sempre derive estado via `aurum-run`. Nunca invente números.
 
-## Modelo de execução (crítico)
+## Execução
 
-No Hermes, a **única** ferramenta para rodar scripts é **`terminal`** (parâmetro `command`).
-
-**Não existem** tools chamadas `reports`, `ledger`, `rebuild_state`, `financial_operator`, `financial-operator` nem MCP de finanças. Chamar qualquer um desses nomes **falha**.
-
-| Errado (vai dar erro) | Certo |
-|------------------------|-------|
-| Chamar tool `reports` ou `reports.py` | Chamar tool **`terminal`** com o comando abaixo |
-| Chamar tool `financial_operator` | Idem — só **`terminal`** |
-| "A ferramenta reports não existe" → desistir | Usar **`terminal`** imediatamente |
-| Inventar saldos de memória | `terminal` → `rebuild_state.py` → citar o JSON |
-| Pedir contas/categorias antes de **leitura** | Preflight é **somente para escrita** |
-| `aurum-run accounts` sem subcomando `ledger` (versões antigas) | Use `aurum-run ledger accounts` — ou `aurum-run accounts` (atalho desde v1.3.9) |
-| Desistir após erro de comando | Corrija o subcomando e **execute de novo** — não pergunte ao usuário "outra forma" |
-
-### Exemplo — "Quanto gastei neste mês?"
-
-**Primeira ação:** tool **`terminal`** com caminho **absoluto** via `aurum-run` (não use caminho relativo `skills/...` — o cwd do gateway não é o perfil):
-
-```json
-{
-  "command": "$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run report monthly --month $(date +%Y-%m)"
-}
-```
-
-Se o perfil não estiver em `profiles/aurum`, localize o wrapper:
-
-```json
-{
-  "command": "AURUM_RUN=$(find \"$HOME/.hermes/profiles\" -path '*/financial-operator/scripts/aurum-run' -type f 2>/dev/null | head -1) && test -n \"$AURUM_RUN\" && \"$AURUM_RUN\" report monthly --month $(date +%Y-%m)"
-}
-```
-
-Leia o JSON do stdout e responda em português.
-
-**Nunca** peça reinstalação ao usuário quando o script não for encontrado — o problema é caminho relativo; use `aurum-run` com caminho absoluto acima.
-
-### Comandos canônicos (`aurum-run`)
-
-| Ação | `terminal` → `command` |
-|------|-------------------------|
-| Despesas do mês | `$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run report monthly --month $(date +%Y-%m)` |
-| Resumo do mês | `.../aurum-run report summary` |
-| Saldo / patrimônio | `.../aurum-run state` |
-| Listar contas | `.../aurum-run ledger accounts` (atalho: `.../aurum-run accounts`) |
-| Listar categorias | `.../aurum-run ledger categories` (atalho: `.../aurum-run categories`) |
-| Gravar despesa/receita | `.../aurum-run ledger append -` (stdin) — **nunca** `aurum-run append` sem `ledger` |
-
-O `aurum-run` define `HERMES_HOME` na raiz do perfil automaticamente.
-
-Caminho dos scripts (referência — **não** use relativo no terminal):
+Tool **`terminal`** apenas. Prefixo:
 
 ```
-skills/financial-operator/scripts/
-├── aurum-run          # ← USE ESTE no terminal (caminho absoluto)
-├── ledger.py
-├── rebuild_state.py
-├── reports.py
-└── backup.py
+$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run
 ```
 
-Backup diário: ver [docs/backup.md](../../docs/backup.md).
+## Helper (obrigatório)
 
-## Consultas somente leitura — executar imediatamente
+1. `aurum-run hint "<palavras do usuário>"`
+2. `match` high → execute o `command`
+3. `match` null → `aurum-run help --json`
 
-Quando o usuário **pergunta** (não registra) — **não** rode preflight. **Não** pergunte quais contas ou categorias usar. Execute o script correspondente e responda com base no JSON de saída.
+**Não improvisa. Não desiste. Não pergunte "outra forma".**
 
-### Pergunta → comando
+## Consultas — executar imediatamente
 
-| Usuário pergunta (exemplos) | Comando |
-|-------------------------------|---------|
-| despesas deste mês, quanto gastei em junho, relatório mensal | `aurum-run report monthly --month YYYY-MM` (caminho absoluto) |
-| quanto gastei em alimentação, gastos por categoria | `aurum-run report category --name <Categoria> --month YYYY-MM` |
-| resumo do mês atual | `aurum-run report summary` |
-| saldo, quanto tenho, fundos disponíveis, patrimônio | `aurum-run state` |
-| quais contas existem, contas no débito e crédito | `aurum-run ledger accounts` |
+| Intenção | Comando |
+|----------|---------|
+| Contas débito/crédito | `do list-accounts` — arrays `debit` / `credit` |
+| Categorias | `do list-categories` |
+| Despesas do mês | `do monthly-report` [--month YYYY-MM] |
+| Saldo / patrimônio | `do balances` |
+| Resumo | `do summary` |
+| Por categoria | `do category-report --name <Categoria>` |
+| Diagnóstico | `do ledger-check` |
 
-Prefixo absoluto padrão: `$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run`
+**Proibido** dizer "sem contas" sem `do list-accounts` com `account_count > 0`.
 
-Use a **data de hoje** para "este mês" / "mês atual" (`date +%Y-%m` ou equivalente). Para um mês nomeado, use aquele `YYYY-MM`.
+Seed inclui: **Banco Inter**, **Carteira**, **Nubank** (débito) e **Inter Cartão de Crédito** (crédito).
 
-### Contas no débito e no crédito
+## Escrita — intenções `do`
 
-Quando o usuário pede contas de **débito** e **crédito** — execute **uma vez** `ledger accounts` e separe pelo campo `kind` no JSON:
+| Intenção | Uso |
+|----------|-----|
+| `record-expense` | Despesa simples (débito, PIX, crédito à vista) |
+| `record-income` | Receita |
+| `record-transfer` | Entre contas (saque Inter → Carteira) |
+| `record-mixed-expense` | Pagamento misto (várias contas / parcelado) |
+| `add-category` | Nova categoria em `categories.json` |
+| `add-account` | Nova conta no ledger |
+| `update-account` | Config de cartão (`account_config`) |
+| `preflight` | Validar contas + categorias antes de gravar |
+
+### Despesa simples
 
 ```bash
-$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger accounts
+aurum-run do record-expense '{"amount":50,"account":"Banco Inter","category":"Alimentação","description":"Mercado"}'
 ```
 
-| `kind` no JSON | Apresente ao usuário como |
-|----------------|---------------------------|
-| `asset` | **Débito / ativo** — conta corrente, carteira, PIX |
-| `liability` | **Crédito / passivo** — cartão de crédito, fatura |
+PIX e débito → mesma conta **asset** (`Banco Inter`). Crédito → conta em `credit` (`Inter Cartão de Crédito`).
 
-Exemplo de resposta:
-
-```
-Débito (ativo):
-• Banco Inter
-• Carteira
-• Nubank
-
-Crédito (passivo):
-• (nenhuma conta cadastrada)
-```
-
-Se não houver contas `liability`, diga claramente que **não há cartão de crédito cadastrado** — não invente e não peça ao usuário "outra forma" de listar.
-
-**Nunca** desista após erro de subcomando — use `ledger accounts` (forma canônica) ou o atalho `accounts`.
-
-### Despesas do mês (caso mais comum)
+### Transferência (saque, entre contas)
 
 ```bash
-$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run report monthly --month 2026-06
+aurum-run do record-transfer '{"from":"Banco Inter","to":"Carteira","amount":50,"description":"Saque"}'
 ```
 
-Exemplo de saída:
+**Não é despesa** — patrimônio não muda. "Caixa" sem conta cadastrada → use **Carteira** ou `add-account` antes.
 
-```json
-{
-  "month": "2026-06",
-  "expenses": { "Alimentação": 52.3 },
-  "incomes": {},
-  "total_expense": 52.3,
-  "total_income": 0,
-  "net_cashflow": -52.3,
-  "transaction_count": 1
-}
-```
+### Pagamento misto
 
-**Responda em linguagem natural** — ex.:
-
-```
-Em junho/2026 você tem R$ 52,30 em despesas (1 lançamento):
-• Alimentação: R$ 52,30
-Receitas: nenhuma. Fluxo líquido: -R$ 52,30.
-```
-
-Se `expenses` for `{}` e `transaction_count` for 0 → diga claramente que **não há despesas registradas** naquele mês (não diga "preciso de contas/categorias").
-
-Se o script retornar `{"status": "error", "message": "Ledger não encontrado."}` → informe que ainda não há transações registradas; ofereça registrar a primeira.
-
-### Saldos e patrimônio
+Um comando, vários lançamentos em `parts`:
 
 ```bash
-$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run state
+aurum-run do record-mixed-expense '{
+  "category":"Vestuário",
+  "description":"Roupas",
+  "parts":[
+    {"amount":100,"account":"Carteira"},
+    {"amount":900,"account":"Inter Cartão de Crédito","installments":9}
+  ]
+}'
 ```
 
-Use os campos: `balances`, `available`, `net_worth`, `credit_cards`. Nunca invente esses números.
+Parcelado (`9x`, `resto no cartão`) → use esta intenção, não dois `record-expense` separados sem coordenação.
 
-### Outros relatórios
+### Categoria nova
+
+Se categoria não existe em `do list-categories` → confirme com usuário →:
 
 ```bash
-$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run report category --name Alimentação --month 2026-06
-$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run report summary
+aurum-run do add-category '{"name":"Vestuário","kind":"expense"}'
 ```
 
----
+Depois registre a despesa. Categorias padrão incluem **Vestuário**, Alimentação, Transporte, Moradia, Saúde, Lazer, Educação, Outros.
 
-## Registrar despesa ou receita (escrita)
-
-Fluxo obrigatório: **preflight** → **`aurum-run ledger append -`** → **`aurum-run state`**.
-
-### Sintaxe do `aurum-run` para gravar
-
-| Certo | Errado |
-|-------|--------|
-| `aurum-run ledger append -` | Pedir ao usuário "devo usar ledger?" — **corrija e execute** |
-| `aurum-run append -` | Aceito (atalho), mas prefira `ledger append` |
-
-Prefixo: `$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run`
-
-### Exemplo — "Gastei R$ 50 no mercado pelo Inter no débito"
-
-**Mercado** é o **lugar** (vai em `description`), **não** é categoria. Categoria: **`Alimentação`**.
-
-Quando o usuário informa **valor + lugar (mercado/supermercado) + conta + débito/crédito**, **registre direto** após o preflight — **não** peça confirmação redundante.
-
-1. Preflight:
+### Conta nova
 
 ```bash
-$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger accounts
-$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger categories
+aurum-run do add-account '{"name":"Caixa","kind":"asset"}'
 ```
 
-2. Débito + conta `Banco Inter` (`kind: asset` no JSON) → use `"account": "Banco Inter"`. Ao falar com o usuário: *Banco Inter (ativo — débito)*.
-
-3. **Execute** o append (data de hoje):
+Cartão (se não existir no seed):
 
 ```bash
-printf '%s' '{"type":"expense","date":"2026-06-17","account":"Banco Inter","category":"Alimentação","amount":50,"description":"Mercado"}' \
-  | $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger append -
+aurum-run do add-account '{"name":"Inter Cartão de Crédito","kind":"liability","credit_limit":26800,"closing_day":19,"due_day":25,"billing_profile":"br"}'
 ```
 
-4. Reconstruir estado:
+### Atualizar cartão
 
 ```bash
-$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run state
+aurum-run do update-account '{"account":"Inter Cartão de Crédito","credit_limit":30000}'
 ```
 
-5. Confirmar ao usuário:
+## Regras de domínio
 
-```
-✓ Registrado R$ 50,00 — Banco Inter (débito), Alimentação, Mercado.
-✓ Saldo de Banco Inter atualizado.
-```
+| Usuário diz | Ação |
+|-------------|------|
+| mercado | `category`: Alimentação, `description`: Mercado |
+| roupas | `category`: Vestuário (ou Outros se preferir) |
+| débito, PIX | conta `asset` |
+| crédito, parcelado, Nx | conta `liability` + `installments` se parcelado |
+| transferi, saquei | `record-transfer` |
 
-**Nunca** use `"category":"Mercado"`. **Nunca** use `cat references/categories.json` — o cwd do gateway não é o perfil; use **`aurum-run ledger categories`**.
+## Fail closed
 
----
+- Conta/categoria ausente → `add-account` / `add-category` ou escolha existente — **nunca** chute
+- Confirme só após `"status":"ok"`
 
-## Fail closed — preflight (escrita)
+## Legado
 
-Preflight aplica **somente** ao **gravar** `expense` ou `income`. **Não** se aplica a relatórios nem consultas de saldo.
+`ledger append -` para investment, adjustment, liability standalone. Ver `help --json`.
 
-**Obrigatório antes de montar um evento `expense` ou `income`:**
+## Proibições
 
-```bash
-$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger accounts
-$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger categories
-```
-
-| Verificação | Se falhar |
-|-------------|-----------|
-| Nome da conta existe na saída de `accounts` | **Pare.** Proponha um evento `account` (veja abaixo). Peça confirmação do nome, tipo (**ativo** vs **passivo** na fala; `asset` vs `liability` no JSON) e campos do cartão se for crédito. |
-| String da categoria existe na saída de `categories` (lista `expense` ou `income`) | **Pare.** Proponha adicionar a categoria em `references/categories.json` **ou** pergunte qual categoria existente usar. Não chute. |
-| Cartão de crédito (`kind: liability`) tem `closing_day` (e limite/vencimento se novo) | **Pare.** Proponha `account` + `account_config` primeiro. Na fala: *passivo / cartão de crédito*. |
-| Usuário disse "crédito" / cartão | Conta deve ser **passivo** (`kind: liability`) — não um ativo como `Banco Inter`. |
-| Usuário disse "débito" / conta corrente | Conta deve ser **ativo** (`kind: asset`) — não o cartão de crédito. |
-
-Somente após conta e categoria **validadas no preflight** → `aurum-run ledger append -` → `aurum-run state`.
-
-**Mercado/supermercado/feira** com valor e forma de pagamento claros → categoria **`Alimentação`** e `description` com o lugar — **registre sem pedir confirmação**.
-
-**Pensão, aluguel** e termos ambíguos → pergunte qual categoria existente usar ou se deve criar uma nova.
-
-**Nunca** mapeie termos ambíguos (ex.: "pensão" → `Moradia`) sem confirmação do usuário.
-
-### Exemplo — conta e categoria ausentes
-
-Usuário: *"Gastei R$ 50 no Banco Inter crédito em pensão"*
-
-Ledger tem só asset `Banco Inter`. Categorias não têm `Pensão`.
-
-**Errado:** append de despesa em `Banco Inter` com categoria `Moradia` ou `Alimentação`.
-
-**Certo:**
-
-```
-Não registrei — falta compatibilidade:
-
-• Conta: não existe cartão de crédito Inter. Contas atuais: Banco Inter (ativo), Carteira (ativo), Nubank (ativo).
-  Criar "Inter Cartão de Crédito" (passivo / cartão de crédito)? Preciso: limite, dia fechamento, dia vencimento.
-
-• Categoria: "Pensão" não está em categories.json.
-  Despesa: Alimentação, Transporte, Moradia, Saúde, Lazer, Educação, Outros.
-  Adicionar "Pensão" ou usar qual categoria?
-
-Confirme e eu cadastro conta/categoria antes do lançamento.
-```
-
-### Criar conta ausente
-
-Asset (débito / conta corrente):
-
-```bash
-printf '%s' '{"type":"account","name":"Inter Conta Corrente","kind":"asset"}' \
-  | $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger append -
-```
-
-Cartão de crédito (sempre `type: account`, `kind: liability` — **nunca** `type: liability`):
-
-```bash
-printf '%s' '{"type":"account","name":"Inter Cartão de Crédito","kind":"liability","credit_limit":26800,"closing_day":19,"due_day":25,"billing_profile":"br"}' \
-  | $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger append -
-```
-
-### Criar categoria ausente
-
-Categorias ficam só em `references/categories.json` (não no ledger). Após confirmação do usuário:
-
-1. Edite `references/categories.json` — adicione a string exata em `expense` ou `income`.
-2. Depois faça o append da transação.
-
-Não adicione categorias silenciosamente sem aprovação do usuário.
-
-## Procedimento (quando o preflight passar)
-
-1. Preflight: `ledger accounts` + `ledger categories` (caminho absoluto via `aurum-run`)
-2. Monte o JSON com strings **exatas** de conta e categoria
-3. Append — **prefira stdin**:
-
-```bash
-printf '%s' '{"type":"expense","date":"2026-06-16","account":"Banco Inter","category":"Alimentação","amount":0.85,"description":"mercado"}' \
-  | $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger append -
-```
-
-4. Se `append` imprimir erro em stderr → reporte o erro; não diga que deu certo
-5. Reconstrua o estado:
-
-```bash
-$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run state
-```
-
-6. Responda com confirmação somente após os passos 3–5 terem sucesso:
-
-```
-✓ Registrado.
-✓ Saldo de {account} atualizado.
-✓ Fluxo de caixa atualizado.
-✓ Categoria: {category}.
-```
-
-**Não chame `init` manualmente** — não reseta um ledger existente; só copia o seed quando `data/ledger.jsonl` não existe.
-
-## Linguagem do usuário → campos do ledger
-
-Na conversa use **ativo/passivo** e **débito/crédito**. No JSON use sempre **`asset`/`liability`** e os nomes exatos de conta/categoria.
-
-| Usuário diz (conversa) | Campo no ledger (JSON) |
-|------------------------|------------------------|
-| débito, conta corrente, cartão de débito, PIX da conta | `"account"` em conta com `"kind":"asset"` |
-| crédito, cartão de crédito, fatura, parcelado no cartão | `"account"` em conta com `"kind":"liability"` |
-| ativo | tipo de conta → `"kind":"asset"` (só no JSON; na fala: *ativo*) |
-| passivo | tipo de conta → `"kind":"liability"` (só no JSON; na fala: *passivo*) |
-| mercado, supermercado, no mercado | **Não** é categoria — use `category`: **Alimentação**, `description`: mercado/supermercado/Mercado; **registre direto** se valor e conta estiverem claros |
-| pensão, aluguel | Mapear só para categoria existente ou nova após confirmação |
-| 85 centavos, R$ 0,85 | `"amount": 0.85` |
-
-## Regras do terminal (crítico)
-
-- **Sempre** use a tool Hermes **`terminal`** — nunca `reports`, `ledger`, `rebuild_state` como nome de tool
-- **Nunca modifique** `ledger.py` ou outros scripts — apenas execute-os via `terminal`
-- **Nunca use `init`** para limpar transações
-- Para **escrita**: subcomando `ledger` é obrigatório — `aurum-run ledger append -`
-- **Nunca** peça ao usuário qual subcomando usar — se errou, corrija para `ledger append` e execute
-- Se `append` falhar com `JSON inválido`, use **stdin** (`append -`) uma vez; não fique em loop de aspas no shell
-- Máximo de **3** tentativas `terminal` por **escrita**; depois pare e mostre ao usuário o que falta
-- Verifique se o stdout de `append` contém `"status": "ok"` antes de confirmar
-
-## Tipos de evento
-
-| type | campos |
-|------|--------|
-| account | name, kind (asset\|liability), credit_limit?, closing_day?, due_day?, billing_profile? |
-| account_config | account, credit_limit?, closing_day?, due_day?, billing_profile? |
-| expense | date, account, category, amount, installments?, description? |
-| income | date, account, category, amount, description? |
-| transfer | date, from, to, amount, description? |
-| investment | date, account, asset, amount, description? |
-| liability | instrumento de dívida — **não** é cartão de crédito (cartões usam `account` + `kind: liability`) |
-| adjustment | date, account, amount (com sinal), reason |
-
-## Cartões de crédito
-
-Cartões são eventos `account` com `kind: liability` mais metadados de faturamento.
-
-### Perfis de faturamento
-
-| profile | Uso |
-|---------|-----|
-| `br` (padrão) | Cartões brasileiros — parcelamento no POS, ciclo por dia de fechamento |
-| `simple` | Cartões estrangeiros — cobrança integral no ciclo da fatura, sem parcelamento no POS |
-
-### Gasto no cartão
-
-```json
-{"type":"expense","date":"2026-06-15","account":"Inter Cartão de Crédito","category":"Alimentação","amount":80}
-```
-
-Parcelado (somente BR):
-
-```json
-{"type":"expense","date":"2026-06-15","account":"Inter Cartão de Crédito","category":"Outros","amount":150,"installments":3}
-```
-
-### Pagar fatura
-
-```json
-{"type":"transfer","date":"2026-06-25","from":"Banco Inter","to":"Inter Cartão de Crédito","amount":50}
-```
-
-### Regras
-
-- Nunca use `adjustment` para limite, dia de fechamento ou vencimento — use `account_config`.
-- `installments > 1` somente em cartões com `billing_profile: "br"`.
-- Sempre confirme o nome exato da conta via `ledger.py accounts` antes do append.
-
-## Validação (imposta pelo ledger.py)
-
-- Conta deve existir (eventos `account`) antes de expense/income/transfer/investment/adjustment/account_config
-- Categoria deve existir em `references/categories.json`
-- Despesas em cartão de crédito exigem `closing_day` configurado na conta
-- Append é atômico (`flush` + `fsync`)
-
-## Ledger corrompido ou erro ao ler/gravar
-
-**Nunca** diga que o ledger está corrompido sem executar `check`. **Nunca** ofereça recriar/apagar o histórico sem diagnóstico e confirmação explícita.
-
-### Diagnóstico (sempre primeiro)
-
-```bash
-$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger check
-```
-
-O JSON mostra: caminho ativo, linhas válidas, erros por número de linha, **`other_locations`** (outros `ledger.jsonl` no disco — split brain).
-
-Se `other_locations` tiver outro arquivo com eventos, **não apague** — mescle no perfil ou peça ao usuário rodar os comandos de unificação abaixo.
-
-### Dois ledgers (comum)
-
-Caminho canônico do Aurum:
-
-`~/.hermes/profiles/aurum/data/ledger.jsonl`
-
-Ledger legado (ignorar após unificar):
-
-`~/.hermes/data/ledger.jsonl`
-
-**Nunca** recrie do zero se ambos existem — compare e una.
-
-### Reparo (mantém eventos válidos)
-
-Faz backup em `ledger.jsonl.bak`, remove só linhas com JSON inválido:
-
-```bash
-$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger repair --dry-run
-$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger repair
-```
-
-Depois: `aurum-run state` e confirme ao usuário quantos eventos foram preservados.
-
-### Restaurar do backup diário
-
-Se o reparo não bastar:
-
-```bash
-ls ~/.hermes/profiles/aurum/bkp/aurum-*.tar.gz
-# extrair e copiar data/ledger.jsonl — ver docs/backup.md
-```
-
-### Recomeçar do zero (somente se o usuário pedir explicitamente)
-
-Faz backup `.bak.reset` de **todos** os ledgers conhecidos (perfil + global), remove e copia o seed:
-
-```bash
-$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run ledger reset --confirm
-$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run state
-```
-
-Seed inicial: contas `Banco Inter`, `Carteira`, `Nubank` — **sem transações**.
-
-**Nunca** use `init` para reset — use `reset --confirm`.
-
-## Armadilhas
-
-- Não edite `ledger.jsonl` manualmente — apenas append
-- Não pule `rebuild_state.py` antes de reportar saldos
-- Correções usam `adjustment`, nunca apague ou reescreva linhas
-- Não confunda `type: liability` (dívida) com conta de cartão (`type: account`, `kind: liability`)
+- Inventar saldos; improvisar comando sem `hint`
+- `cat references/categories.json` — use `do list-categories`
+- Remover contas do ledger (append-only) — não suportado

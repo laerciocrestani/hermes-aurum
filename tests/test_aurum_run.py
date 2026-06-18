@@ -46,6 +46,54 @@ class AurumRunTests(unittest.TestCase):
         self.assertEqual(alias.returncode, 0, alias.stderr)
         self.assertEqual(json.loads(direct.stdout), json.loads(alias.stdout))
 
+    def test_hint_returns_list_accounts(self) -> None:
+        result = subprocess.run(
+            ["bash", str(AURUM_RUN), "hint", "listar contas débito crédito"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(result.stdout)
+        self.assertEqual(data["match"]["intent"], "list-accounts")
+
+    def test_help_json_lists_intents(self) -> None:
+        result = subprocess.run(
+            ["bash", str(AURUM_RUN), "help", "--json"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(result.stdout)
+        self.assertEqual(data["status"], "ok")
+        self.assertGreaterEqual(len(data["intents"]), 8)
+
+    def test_do_list_accounts(self) -> None:
+        result = subprocess.run(
+            ["bash", str(AURUM_RUN), "do", "list-accounts"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(result.stdout)
+        self.assertEqual(data["status"], "ok")
+        self.assertIn("debit", data)
+        self.assertIn("credit", data)
+
+    def test_unknown_command_suggests_hint(self) -> None:
+        result = subprocess.run(
+            ["bash", str(AURUM_RUN), "nope"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        data = json.loads(result.stderr)
+        self.assertEqual(data["status"], "error")
+        self.assertIn("hint", data["suggestion"])
+
 
 if __name__ == "__main__":
     unittest.main()
