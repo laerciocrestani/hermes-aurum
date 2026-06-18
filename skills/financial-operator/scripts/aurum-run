@@ -9,7 +9,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROFILE="$(cd "$HERE/../../.." && pwd)"
 export HERMES_HOME="${HERMES_HOME:-$PROFILE}"
 
-cmd="${1:?uso: aurum-run report|ledger|state|append|backup}"
+cmd="${1:?uso: aurum-run report|ledger|accounts|categories|state|append|backup}"
 shift
 
 case "$cmd" in
@@ -18,6 +18,9 @@ case "$cmd" in
     ;;
   ledger)
     exec python3 "$HERE/ledger.py" "$@"
+    ;;
+  accounts|categories|check|repair|reset|list|init)
+    exec python3 "$HERE/ledger.py" "$cmd" "$@"
     ;;
   append)
     exec python3 "$HERE/ledger.py" append "$@"
@@ -29,7 +32,7 @@ case "$cmd" in
     exec python3 "$HERE/backup.py" "$@"
     ;;
   *)
-    echo '{"status":"error","message":"Comando aurum-run desconhecido — use report, ledger, append, state ou backup"}' >&2
+    echo '{"status":"error","message":"Comando aurum-run desconhecido — use report, ledger, accounts, categories, append, state ou backup"}' >&2
     exit 1
     ;;
 esac
