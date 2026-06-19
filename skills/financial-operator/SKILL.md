@@ -1,7 +1,7 @@
 ---
 name: financial-operator
 description: "Registre despesas com compose --run e consulte via terminal. NÃO chame aurum_run — só terminal com caminho absoluto."
-version: 1.4.3
+version: 1.4.4
 author: Aurum
 license: MIT
 metadata:

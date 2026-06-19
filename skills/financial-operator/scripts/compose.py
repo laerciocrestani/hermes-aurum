@@ -9,7 +9,7 @@ from datetime import date
 from typing import Any
 
 from catalog import AURUM_RUN
-from credit_card import build_account_registry
+from credit_card import build_account_registry, is_credit_card
 from ledger import account_names, init_ledger, load_events
 from paths import get_paths
 
@@ -137,6 +137,49 @@ class ComposeError(ValueError):
         self.extra = extra or {}
 
 
+def update_account_command(account: str) -> str:
+    example = {
+        "account": account,
+        "credit_limit": 10000,
+        "closing_day": 1,
+        "due_day": 10,
+        "billing_profile": "br",
+    }
+    body = json.dumps(example, ensure_ascii=False)
+    escaped = body.replace("'", "'\\''")
+    return f"{AURUM_RUN} do update-account '{escaped}'"
+
+
+def validate_card_config(paths: dict[str, Any], account: str) -> None:
+    init_ledger(paths["ledger"], paths["seed"])
+    events = load_events(paths["ledger"])
+    registry = build_account_registry(events)
+    if not is_credit_card(registry, account):
+        return
+
+    info = registry[account]
+    missing: list[str] = []
+    if info.credit_limit is None:
+        missing.append("credit_limit")
+    if info.closing_day is None:
+        missing.append("closing_day")
+    if info.due_day is None:
+        missing.append("due_day")
+
+    if not missing:
+        return
+
+    raise ComposeError(
+        f"Cartão '{account}' sem configuração ({', '.join(missing)}). "
+        "Configure closing_day (fechamento) e due_day (vencimento) antes de registrar no crédito.",
+        {
+            "missing_fields": missing,
+            "fix_command": update_account_command(account),
+            "suggestion": update_account_command(account),
+        },
+    )
+
+
 def build_expense_payload(text: str, paths: dict[str, Any]) -> dict[str, Any]:
     if not WRITE_VERBS_RE.search(text):
         raise ValueError("Não identifiquei despesa — use verbos como gastei, paguei ou comprei")
@@ -168,6 +211,7 @@ def build_expense_payload(text: str, paths: dict[str, Any]) -> dict[str, Any]:
     if installments > 1:
         payload["installments"] = installments
 
+    validate_card_config(paths, account)
     return payload
 
 

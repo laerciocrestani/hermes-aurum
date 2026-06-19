@@ -110,10 +110,15 @@ def validate_day_field(value: Any, field_name: str) -> None:
         raise ValueError(f"{field_name} deve ser inteiro entre 1 e 31")
 
 
+REQUIRED_CARD_FIELDS = ("credit_limit", "closing_day", "due_day")
+
+
 def validate_card_config_fields(event: dict[str, Any], *, require_all: bool = False) -> None:
     present = [key for key in CONFIG_FIELDS if key in event]
-    if require_all and len(present) < len(CONFIG_FIELDS):
-        raise ValueError("conta liability exige credit_limit, closing_day, due_day")
+    if require_all:
+        missing = [key for key in REQUIRED_CARD_FIELDS if key not in event]
+        if missing:
+            raise ValueError(f"conta liability exige {', '.join(missing)}")
     if not present:
         return
 
@@ -162,7 +167,7 @@ def validate_event(
         if kind not in ("asset", "liability"):
             raise ValueError("kind da conta deve ser 'asset' ou 'liability'")
         if kind == "liability":
-            validate_card_config_fields(event)
+            validate_card_config_fields(event, require_all=True)
         elif any(key in event for key in CONFIG_FIELDS):
             raise ValueError("campos de config de cartão exigem kind 'liability'")
         return

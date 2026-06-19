@@ -13,7 +13,7 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "skills/financial-operator/scrip
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
-from compose import build_expense_payload, compose_payload, resolve_account  # noqa: E402
+from compose import ComposeError, build_expense_payload, compose_payload, resolve_account  # noqa: E402
 from do import handle_record_expense  # noqa: E402
 
 
@@ -69,6 +69,25 @@ class ComposeTests(unittest.TestCase):
         self.assertEqual(planned["parsed"]["account"], "C6 Bank")
         self.assertEqual(record["status"], "ok")
         self.assertEqual(record["intent"], "record-expense")
+
+    def test_compose_errors_without_card_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = _paths_with_c6(Path(tmp))
+            # C6 Bank sem closing_day no seed — só kind liability
+            paths["seed"].write_text(
+                "\n".join(
+                    [
+                        '{"type":"account","name":"C6Bank","kind":"asset"}',
+                        '{"type":"account","name":"C6 Bank","kind":"liability"}',
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaises(ComposeError) as ctx:
+                build_expense_payload("Gastei 33 reais no C6bank crédito em 3x", paths)
+        self.assertIn("closing_day", ctx.exception.extra["missing_fields"])
+        self.assertIn("update-account", ctx.exception.extra["fix_command"])
 
     def test_compose_without_run_returns_command(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -7,7 +7,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
 
-CATALOG_VERSION = "1.4.3"
+CATALOG_VERSION = "1.4.4"
 
 AURUM_RUN = "$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run"
 

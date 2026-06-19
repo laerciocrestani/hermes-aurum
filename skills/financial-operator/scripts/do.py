@@ -12,7 +12,7 @@ from datetime import date
 from typing import Any
 
 from catalog import AURUM_RUN, get_intent, help_payload, help_text, hint_payload, menu_text
-from compose import ComposeError, compose_payload
+from compose import ComposeError, compose_payload, update_account_command
 from ledger import (
     cmd_accounts,
     cmd_append,
@@ -376,7 +376,7 @@ def handle_compose(text: str, *, run: bool) -> dict[str, Any]:
         result: dict[str, Any] = {
             "status": "error",
             "message": str(exc),
-            "suggestion": f"{AURUM_RUN} do list-accounts",
+            "suggestion": exc.extra.get("suggestion", f"{AURUM_RUN} do list-accounts"),
         }
         result.update(exc.extra)
         return result
@@ -386,7 +386,18 @@ def handle_compose(text: str, *, run: bool) -> dict[str, Any]:
     if not run:
         return payload
 
-    record = handle_record_expense(paths, json.dumps(payload["parsed"], ensure_ascii=False))
+    try:
+        record = handle_record_expense(paths, json.dumps(payload["parsed"], ensure_ascii=False))
+    except ValueError as exc:
+        return {
+            "status": "error",
+            "message": str(exc),
+            "parsed": payload["parsed"],
+            "suggestion": update_account_command(payload["parsed"]["account"])
+            if "closing_day" in str(exc)
+            else f"{AURUM_RUN} do list-accounts",
+        }
+
     payload["result"] = record
     payload["status"] = record.get("status", "error")
     return payload
