@@ -55,7 +55,9 @@ class AurumRunTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         data = json.loads(result.stdout)
-        self.assertEqual(data["match"]["intent"], "list-accounts")
+        self.assertIn("tool", data["match"])
+        self.assertEqual(data["match"]["tool"], "terminal")
+        self.assertIn("aurum-run do list-accounts", data["match"]["command"])
 
     def test_help_json_lists_intents(self) -> None:
         result = subprocess.run(
@@ -68,6 +70,17 @@ class AurumRunTests(unittest.TestCase):
         data = json.loads(result.stdout)
         self.assertEqual(data["status"], "ok")
         self.assertGreaterEqual(len(data["intents"]), 8)
+
+    def test_menu_command(self) -> None:
+        result = subprocess.run(
+            ["bash", str(AURUM_RUN), "menu"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("list-accounts", result.stdout)
+        self.assertIn("NÃO existe tool aurum_run", result.stdout)
 
     def test_do_list_accounts(self) -> None:
         result = subprocess.run(

@@ -11,7 +11,7 @@ from contextlib import redirect_stdout
 from datetime import date
 from typing import Any
 
-from catalog import get_intent, help_payload, help_text, hint_payload
+from catalog import get_intent, help_payload, help_text, hint_payload, menu_text
 from ledger import (
     cmd_accounts,
     cmd_append,
@@ -377,6 +377,8 @@ def main() -> int:
     p_help = sub.add_parser("help")
     p_help.add_argument("--json", action="store_true")
 
+    sub.add_parser("menu")
+
     p_run = sub.add_parser("run")
     p_run.add_argument("intent")
     p_run.add_argument("rest", nargs=argparse.REMAINDER)
@@ -393,6 +395,10 @@ def main() -> int:
             print(json.dumps(help_payload(), ensure_ascii=False, indent=2))
         else:
             print(help_text())
+        return 0
+
+    if args.command == "menu":
+        print(menu_text())
         return 0
 
     if args.command == "run":

@@ -25,6 +25,9 @@ case "$cmd" in
   help)
     exec python3 "$HERE/do.py" help "$@"
     ;;
+  menu)
+    exec python3 "$HERE/do.py" menu
+    ;;
   do)
     exec python3 "$HERE/do.py" run "$@"
     ;;

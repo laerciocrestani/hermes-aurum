@@ -7,7 +7,9 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
 
-CATALOG_VERSION = "1.4.1"
+CATALOG_VERSION = "1.4.2"
+
+AURUM_RUN = "$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run"
 
 LEGACY_COMMANDS = [
     "report",
@@ -275,7 +277,12 @@ _INTENT_BY_NAME = {intent.name: intent for intent in INTENTS}
 
 
 def intent_command(name: str) -> str:
-    return f"aurum-run do {name}"
+    return f"{AURUM_RUN} do {name}"
+
+
+def shell_command(*parts: str) -> str:
+    """Comando completo para a tool Hermes terminal (única tool válida)."""
+    return " ".join([AURUM_RUN, *parts])
 
 
 def get_intent(name: str) -> Intent | None:
@@ -323,9 +330,23 @@ def help_payload() -> dict[str, Any]:
         "intents": [serialize_intent(intent) for intent in INTENTS],
         "legacy_commands": LEGACY_COMMANDS,
         "helper": {
-            "hint": 'aurum-run hint "<palavras do usuário>"',
-            "help_json": "aurum-run help --json",
+            "tool": "terminal",
+            "hint": f'{AURUM_RUN} hint "<palavras do usuário>"',
+            "help_json": f"{AURUM_RUN} help --json",
+            "menu": f"{AURUM_RUN} menu",
         },
+        "forbidden_tools": [
+            "aurum_run",
+            "aurum-run",
+            "aurum run",
+            "financial_operator",
+            "financial-operator",
+            "reports",
+            "ledger",
+            "do",
+            "hint",
+            "help",
+        ],
     }
 
 
@@ -335,7 +356,7 @@ def hint_payload(query: str) -> dict[str, Any]:
         return {
             "status": "error",
             "message": "Consulta vazia",
-            "suggestion": "aurum-run help --json",
+            "suggestion": f"{AURUM_RUN} help --json",
         }
 
     ranked: list[tuple[float, Intent]] = []
@@ -356,7 +377,7 @@ def hint_payload(query: str) -> dict[str, Any]:
                 {"intent": item["name"], "command": item["command"], "description_pt": item["description_pt"]}
                 for item in alternatives
             ],
-            "suggestion": "aurum-run help --json",
+            "suggestion": f"{AURUM_RUN} help --json",
         }
 
     best_score, best = ranked[0]
@@ -366,6 +387,7 @@ def hint_payload(query: str) -> dict[str, Any]:
     match = {
         "intent": best.name,
         "confidence": confidence,
+        "tool": "terminal",
         "command": intent_command(best.name),
         "description_pt": best.description_pt,
     }
@@ -373,6 +395,7 @@ def hint_payload(query: str) -> dict[str, Any]:
     alternatives = [
         {
             "intent": intent.name,
+            "tool": "terminal",
             "command": intent_command(intent.name),
             "description_pt": intent.description_pt,
             "score": score,
@@ -387,30 +410,54 @@ def hint_payload(query: str) -> dict[str, Any]:
         "alternatives": alternatives,
     }
     if confidence != "high":
-        payload["suggestion"] = "aurum-run help --json"
+        payload["suggestion"] = f"{AURUM_RUN} help --json"
         if confidence == "low" and best_score > 0:
             payload["best_guess"] = match
     return payload
 
 
+def menu_text() -> str:
+    return """Aurum — comandos básicos (use a tool terminal com estes comandos shell)
+
+Listar contas (débito e crédito):
+  $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run do list-accounts
+
+Despesas do mês:
+  $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run do monthly-report
+
+Saldo e patrimônio:
+  $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run do balances
+
+Registrar despesa (ex.: mercado R$ 50 Inter débito):
+  $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run do record-expense '{"amount":50,"account":"Banco Inter","category":"Alimentação","description":"Mercado"}'
+
+Transferência / saque:
+  $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run do record-transfer '{"from":"Banco Inter","to":"Carteira","amount":50}'
+
+Dúvida? $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run hint "sua pergunta"
+
+NÃO existe tool aurum_run — só terminal com o caminho acima."""
+
+
 def help_text() -> str:
     lines = [
-        "Aurum — comandos por intenção (v1.4.1)",
+        f"Aurum — comandos por intenção (v{CATALOG_VERSION})",
         "",
-        "Helper:",
-        '  aurum-run hint "<pergunta do usuário>"  → sugere intenção',
-        "  aurum-run help --json                   → catálogo completo",
+        "Use a tool terminal (NÃO existe tool aurum_run):",
+        f"  {AURUM_RUN} hint \"<pergunta>\"",
+        f"  {AURUM_RUN} help --json",
+        f"  {AURUM_RUN} menu",
         "",
         "Leitura:",
     ]
     for intent in INTENTS:
         if intent.kind == "read":
-            lines.append(f"  aurum-run do {intent.name}  — {intent.description_pt}")
+            lines.append(f"  {intent_command(intent.name)}  — {intent.description_pt}")
     lines.append("")
     lines.append("Escrita:")
     for intent in INTENTS:
         if intent.kind == "write":
-            lines.append(f"  aurum-run do {intent.name} '<json>'  — {intent.description_pt}")
+            lines.append(f"  {intent_command(intent.name)} '<json>'  — {intent.description_pt}")
     lines.append("")
     lines.append("Legado: report, ledger, state, backup")
     return "\n".join(lines)

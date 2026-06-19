@@ -34,6 +34,8 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(payload["version"], CATALOG_VERSION)
         self.assertEqual(len(payload["intents"]), len(INTENTS))
         self.assertIn("legacy_commands", payload)
+        self.assertEqual(payload["helper"]["tool"], "terminal")
+        self.assertIn("aurum_run", payload["forbidden_tools"])
 
     def test_hint_matches_list_accounts(self) -> None:
         result = hint_payload("listar contas débito crédito")
@@ -58,7 +60,7 @@ class CatalogTests(unittest.TestCase):
         intent = get_intent("balances")
         assert intent is not None
         data = serialize_intent(intent)
-        self.assertEqual(data["command"], "aurum-run do balances")
+        self.assertTrue(data["command"].endswith("aurum-run do balances"))
 
 
 if __name__ == "__main__":

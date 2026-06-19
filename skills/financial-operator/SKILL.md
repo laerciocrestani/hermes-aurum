@@ -1,7 +1,7 @@
 ---
 name: financial-operator
-description: "Use para registrar transações e consultas financeiras. Apenas fatos — sem opiniões. Use SOMENTE a tool terminal com aurum-run (hint → do). Não existe tool reports nem financial_operator."
-version: 1.4.1
+description: "Registre e consulte finanças via tool terminal APENAS. Execute scripts shell com caminho absoluto. NÃO chame aurum_run, aurum-run, reports, ledger, financial_operator — essas tools NÃO EXISTEM."
+version: 1.4.2
 author: Aurum
 license: MIT
 metadata:
@@ -12,141 +12,88 @@ metadata:
 
 # Operador Financeiro
 
-Modo padrão do Aurum (90%). Registrar eventos, categorizar, reportar fatos. Sem mentoria.
+## CRÍTICO — única tool: `terminal`
 
-**Idioma:** responda na **língua do usuário** (padrão pt-BR). JSON técnico em **inglês**; conversa com ativo/passivo, débito/crédito.
+No Hermes existe **somente** a tool **`terminal`** (parâmetro `command` = string shell).
 
-## Regra de ouro
+**NÃO EXISTEM** tools chamadas:
+`aurum_run`, `aurum-run`, `aurum run`, `do`, `hint`, `help`, `reports`, `ledger`, `financial_operator`, `financial-operator`
 
-Nunca calcule saldos manualmente. Sempre derive estado via `aurum-run`. Nunca invente números.
+Chamar qualquer nome acima **falha**. O script `aurum-run` é um **arquivo shell**, não uma tool.
 
-## Execução
+### Exemplo correto — listar contas
 
-Tool **`terminal`** apenas. Prefixo:
+Chame a tool **`terminal`** com:
+
+```json
+{
+  "command": "$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run do list-accounts"
+}
+```
+
+Leia o JSON do stdout. Use `debit` e `credit`. Responda em português.
+
+### Exemplo ERRADO (nunca faça)
+
+- Chamar tool `aurum_run` ❌
+- Chamar tool `aurum-run` ❌
+- Dizer "ferramenta não encontrada" e desistir ❌
+
+Se `terminal` falhar, corrija o **caminho shell** — não invente outra tool.
+
+Caminho absoluto padrão:
 
 ```
 $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run
 ```
 
-## Helper (obrigatório)
+## Pergunta → ação imediata
 
-1. `aurum-run hint "<palavras do usuário>"`
-2. `match` high → execute o `command`
-3. `match` null → `aurum-run help --json`
+| Usuário pergunta | `terminal` → `command` |
+|------------------|------------------------|
+| liste contas, débito e crédito | `.../aurum-run do list-accounts` |
+| comandos básicos, menu, ajuda | `.../aurum-run menu` |
+| quanto gastei este mês | `.../aurum-run do monthly-report` |
+| saldo, patrimônio | `.../aurum-run do balances` |
+| não sabe o comando | `.../aurum-run hint "<palavras do usuário>"` → depois execute o `command` do JSON com **`terminal`** |
 
-**Não improvisa. Não desiste. Não pergunte "outra forma".**
+**Proibido** dizer "sem contas" sem rodar `do list-accounts` e ver `account_count > 0`.
 
-## Consultas — executar imediatamente
+## Escrita — sempre via `terminal`
 
-| Intenção | Comando |
-|----------|---------|
-| Contas débito/crédito | `do list-accounts` — arrays `debit` / `credit` |
-| Categorias | `do list-categories` |
-| Despesas do mês | `do monthly-report` [--month YYYY-MM] |
-| Saldo / patrimônio | `do balances` |
-| Resumo | `do summary` |
-| Por categoria | `do category-report --name <Categoria>` |
-| Diagnóstico | `do ledger-check` |
-
-**Proibido** dizer "sem contas" sem `do list-accounts` com `account_count > 0`.
-
-Seed inclui: **Banco Inter**, **Carteira**, **Nubank** (débito) e **Inter Cartão de Crédito** (crédito).
-
-## Escrita — intenções `do`
-
-| Intenção | Uso |
-|----------|-----|
-| `record-expense` | Despesa simples (débito, PIX, crédito à vista) |
-| `record-income` | Receita |
-| `record-transfer` | Entre contas (saque Inter → Carteira) |
-| `record-mixed-expense` | Pagamento misto (várias contas / parcelado) |
-| `add-category` | Nova categoria em `categories.json` |
-| `add-account` | Nova conta no ledger |
-| `update-account` | Config de cartão (`account_config`) |
-| `preflight` | Validar contas + categorias antes de gravar |
-
-### Despesa simples
-
-```bash
-aurum-run do record-expense '{"amount":50,"account":"Banco Inter","category":"Alimentação","description":"Mercado"}'
+```json
+{
+  "command": "$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run do record-expense '{\"amount\":50,\"account\":\"Banco Inter\",\"category\":\"Alimentação\",\"description\":\"Mercado\"}'"
+}
 ```
 
-PIX e débito → mesma conta **asset** (`Banco Inter`). Crédito → conta em `credit` (`Inter Cartão de Crédito`).
-
-### Transferência (saque, entre contas)
-
-```bash
-aurum-run do record-transfer '{"from":"Banco Inter","to":"Carteira","amount":50,"description":"Saque"}'
-```
-
-**Não é despesa** — patrimônio não muda. "Caixa" sem conta cadastrada → use **Carteira** ou `add-account` antes.
-
-### Pagamento misto
-
-Um comando, vários lançamentos em `parts`:
-
-```bash
-aurum-run do record-mixed-expense '{
-  "category":"Vestuário",
-  "description":"Roupas",
-  "parts":[
-    {"amount":100,"account":"Carteira"},
-    {"amount":900,"account":"Inter Cartão de Crédito","installments":9}
-  ]
-}'
-```
-
-Parcelado (`9x`, `resto no cartão`) → use esta intenção, não dois `record-expense` separados sem coordenação.
-
-### Categoria nova
-
-Se categoria não existe em `do list-categories` → confirme com usuário →:
-
-```bash
-aurum-run do add-category '{"name":"Vestuário","kind":"expense"}'
-```
-
-Depois registre a despesa. Categorias padrão incluem **Vestuário**, Alimentação, Transporte, Moradia, Saúde, Lazer, Educação, Outros.
-
-### Conta nova
-
-```bash
-aurum-run do add-account '{"name":"Caixa","kind":"asset"}'
-```
-
-Cartão (se não existir no seed):
-
-```bash
-aurum-run do add-account '{"name":"Inter Cartão de Crédito","kind":"liability","credit_limit":26800,"closing_day":19,"due_day":25,"billing_profile":"br"}'
-```
-
-### Atualizar cartão
-
-```bash
-aurum-run do update-account '{"account":"Inter Cartão de Crédito","credit_limit":30000}'
-```
+| Intenção | Quando |
+|----------|--------|
+| `do record-expense` | Despesa simples (débito, PIX, crédito) |
+| `do record-transfer` | Transferência, saque entre contas |
+| `do record-mixed-expense` | Pagamento misto / parcelado |
+| `do record-income` | Receita |
+| `do add-category` | Categoria nova (após confirmação) |
+| `do add-account` | Conta nova |
 
 ## Regras de domínio
 
 | Usuário diz | Ação |
 |-------------|------|
 | mercado | `category`: Alimentação, `description`: Mercado |
-| roupas | `category`: Vestuário (ou Outros se preferir) |
-| débito, PIX | conta `asset` |
-| crédito, parcelado, Nx | conta `liability` + `installments` se parcelado |
-| transferi, saquei | `record-transfer` |
+| roupas | `category`: Vestuário |
+| débito, PIX | conta em `debit` (asset) |
+| crédito, parcelado | conta em `credit` (liability) |
+| transferi, saquei | `do record-transfer` |
 
 ## Fail closed
 
-- Conta/categoria ausente → `add-account` / `add-category` ou escolha existente — **nunca** chute
-- Confirme só após `"status":"ok"`
-
-## Legado
-
-`ledger append -` para investment, adjustment, liability standalone. Ver `help --json`.
+- Conta/categoria ausente → `do add-account` / `do add-category` ou pergunte — **nunca** chute
+- Confirme só após `"status":"ok"` no stdout
 
 ## Proibições
 
-- Inventar saldos; improvisar comando sem `hint`
-- `cat references/categories.json` — use `do list-categories`
-- Remover contas do ledger (append-only) — não suportado
+- Chamar tool que não seja `terminal`
+- Inventar saldos
+- Propor arquitetura ou `/menu` quando usuário pede ação — **execute** `menu` ou `do list-accounts`
+- Desistir após erro — use caminho absoluto do shell
