@@ -5,12 +5,13 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
-from datetime import date
+from datetime import date, timedelta
+from pathlib import Path
 from typing import Any
 
 from catalog import AURUM_RUN
 from credit_card import build_account_registry, is_credit_card
-from ledger import account_names, init_ledger, load_events
+from ledger import account_names, init_ledger, load_events, load_categories
 from paths import get_paths
 
 
@@ -31,6 +32,10 @@ AMOUNT_RE = re.compile(
 )
 INSTALLMENTS_RE = re.compile(r"(?:em\s+)?(\d+)\s*x\b", re.IGNORECASE)
 WRITE_VERBS_RE = re.compile(r"\b(gastei|paguei|comprei|gasto|despesa)\b", re.IGNORECASE)
+CATEGORY_PHRASE_RE = re.compile(
+    r"(?:categoria\s+)?(alimentacao|transporte|moradia|saude|lazer|educacao|vestuario|outros|roupas?|mercado)\w*",
+    re.IGNORECASE,
+)
 
 
 def parse_amount(text: str) -> float | None:
@@ -48,6 +53,25 @@ def parse_installments(text: str) -> int:
     return max(1, int(match.group(1)))
 
 
+def parse_date_from_text(text: str) -> str:
+    norm = normalize_text(text)
+    if re.search(r"\bhoje\b", norm):
+        return date.today().isoformat()
+    if re.search(r"\bontem\b", norm):
+        return (date.today() - timedelta(days=1)).isoformat()
+    iso = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", text)
+    if iso:
+        return iso.group(1)
+    br = re.search(r"\b(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?\b", text)
+    if br:
+        day, month = int(br.group(1)), int(br.group(2))
+        year = int(br.group(3)) if br.group(3) else date.today().year
+        if year < 100:
+            year += 2000
+        return date(year, month, day).isoformat()
+    return date.today().isoformat()
+
+
 def detect_payment_kind(text: str) -> str | None:
     norm = normalize_text(text)
     if re.search(r"\b(credito|cartao|parcelad)\w*", norm):
@@ -57,21 +81,50 @@ def detect_payment_kind(text: str) -> str | None:
     return None
 
 
-def detect_category(text: str) -> tuple[str, str]:
+def load_expense_categories(paths: dict[str, Any]) -> list[str]:
+    categories_path = Path(paths["categories"])
+    pool = load_categories(categories_path).get("expense", set())
+    return sorted(pool)
+
+
+def resolve_category(text: str, categories: list[str]) -> tuple[str, str]:
     norm = normalize_text(text)
-    if re.search(r"\bmercad\w*", norm):
-        return "Alimentação", "Mercado"
-    if re.search(r"\b(roupa|vestuario|vestuário)\w*", norm):
-        return "Vestuário", "Roupas"
-    if re.search(r"\btransport\w*", norm):
-        return "Transporte", "Transporte"
+
+    keyword_map = {
+        "mercad": "Alimentação",
+        "alimentac": "Alimentação",
+        "transport": "Transporte",
+        "moradia": "Moradia",
+        "saude": "Saúde",
+        "lazer": "Lazer",
+        "educac": "Educação",
+        "vestuario": "Vestuário",
+        "roupa": "Vestuário",
+        "outros": "Outros",
+    }
+
+    explicit = re.search(r"categoria\s+(\w+)", norm)
+    search = explicit.group(1) if explicit else norm
+    search_compact = compact_key(search)
+
+    for cat in categories:
+        cat_compact = compact_key(cat)
+        if cat_compact in search_compact or search_compact in cat_compact:
+            desc = "Roupas" if cat == "Vestuário" else ("Mercado" if cat == "Alimentação" else cat)
+            return cat, desc
+
+    for key, cat_name in keyword_map.items():
+        if key in search_compact and cat_name in categories:
+            desc = "Roupas" if cat_name == "Vestuário" else ("Mercado" if cat_name == "Alimentação" else cat_name)
+            return cat_name, desc
+
     return "Outros", "Despesa"
 
 
 def account_hints(text: str) -> list[str]:
     norm = normalize_text(text)
     hints: list[str] = []
-    if re.search(r"c6\s*bank|c6bank", norm):
+    if re.search(r"c6\s*banc?k?", norm):
         hints.append("c6")
     if re.search(r"\binter\b", norm):
         hints.append("inter")
@@ -81,7 +134,8 @@ def account_hints(text: str) -> list[str]:
         hints.append("carteira")
     if not hints:
         tokens = [compact_key(token) for token in norm.split() if len(token) >= 3]
-        hints.extend(token for token in tokens if token not in {"reais", "real", "gastei", "paguei", "comprei"})
+        skip = {"reais", "real", "gastei", "paguei", "comprei", "hoje", "ontem", "categoria", "vestuario"}
+        hints.extend(token for token in tokens if token not in skip)
     return hints
 
 
@@ -180,9 +234,53 @@ def validate_card_config(paths: dict[str, Any], account: str) -> None:
     )
 
 
+def build_expense_from_dict(data: dict[str, Any], paths: dict[str, Any]) -> dict[str, Any]:
+    amount = data.get("amount")
+    account = data.get("account")
+    category = data.get("category")
+    if not isinstance(amount, (int, float)) or amount <= 0:
+        raise ValueError("JSON exige 'amount' numérico > 0")
+    if not account or not isinstance(account, str):
+        raise ValueError("JSON exige 'account'")
+    if not category or not isinstance(category, str):
+        raise ValueError("JSON exige 'category'")
+
+    categories = load_expense_categories(paths)
+    if category not in categories:
+        resolved, _ = resolve_category(category, categories)
+        category = resolved
+
+    payload: dict[str, Any] = {
+        "amount": float(amount),
+        "account": account,
+        "category": category,
+        "description": data.get("description", category),
+        "date": data.get("date", date.today().isoformat()),
+    }
+    installments = data.get("installments", 1)
+    if isinstance(installments, int) and installments > 1:
+        payload["installments"] = installments
+
+    validate_card_config(paths, account)
+    return payload
+
+
 def build_expense_payload(text: str, paths: dict[str, Any]) -> dict[str, Any]:
+    stripped = text.strip()
+    if stripped.startswith("{"):
+        try:
+            data = json.loads(stripped)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"JSON inválido: {exc}") from exc
+        if not isinstance(data, dict):
+            raise ValueError("JSON deve ser um objeto")
+        return build_expense_from_dict(data, paths)
+
     if not WRITE_VERBS_RE.search(text):
-        raise ValueError("Não identifiquei despesa — use verbos como gastei, paguei ou comprei")
+        raise ValueError(
+            "Não identifiquei despesa — inclua gastei/paguei/comprei e o valor, "
+            "ou passe JSON: compose --run '{\"amount\":70,\"account\":\"C6 Bank\",\"category\":\"Vestuário\"}'"
+        )
 
     amount = parse_amount(text)
     if amount is None or amount <= 0:
@@ -199,14 +297,15 @@ def build_expense_payload(text: str, paths: dict[str, Any]) -> dict[str, Any]:
             {"debit": debit, "credit": credit},
         )
 
-    category, description = detect_category(text)
+    categories = load_expense_categories(paths)
+    category, description = resolve_category(text, categories)
     installments = parse_installments(text)
     payload: dict[str, Any] = {
         "amount": amount,
         "account": account,
         "category": category,
         "description": description,
-        "date": date.today().isoformat(),
+        "date": parse_date_from_text(text),
     }
     if installments > 1:
         payload["installments"] = installments

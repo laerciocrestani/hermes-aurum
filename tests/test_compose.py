@@ -70,6 +70,28 @@ class ComposeTests(unittest.TestCase):
         self.assertEqual(record["status"], "ok")
         self.assertEqual(record["intent"], "record-expense")
 
+    def test_c6banck_typo_and_vestuario(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = _paths_with_c6(Path(tmp))
+            payload = build_expense_payload(
+                "Gastei 70 reais no C6banck crédito em 3x vestuario hoje",
+                paths,
+            )
+        self.assertEqual(payload["amount"], 70)
+        self.assertEqual(payload["account"], "C6 Bank")
+        self.assertEqual(payload["category"], "Vestuário")
+        self.assertEqual(payload["installments"], 3)
+
+    def test_compose_json_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = _paths_with_c6(Path(tmp))
+            payload = build_expense_payload(
+                '{"amount":70,"account":"C6 Bank","category":"Vestuário","installments":3}',
+                paths,
+            )
+        self.assertEqual(payload["category"], "Vestuário")
+        self.assertEqual(payload["installments"], 3)
+
     def test_compose_errors_without_card_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             paths = _paths_with_c6(Path(tmp))

@@ -1,7 +1,7 @@
 ---
 name: financial-operator
-description: "Registre despesas com compose --run e consulte via terminal. NÃO chame aurum_run — só terminal com caminho absoluto."
-version: 1.4.4
+description: "Registre despesas com compose --run. Não pergunte categoria/data — use defaults. NÃO chame aurum_run."
+version: 1.4.5
 author: Aurum
 license: MIT
 metadata:
@@ -14,68 +14,72 @@ metadata:
 
 ## CRÍTICO — única tool: `terminal`
 
-No Hermes existe **somente** a tool **`terminal`** (`command` = shell).
-
-**NÃO EXISTEM** tools `aurum_run`, `aurum-run`, `reports`, `ledger`, `financial_operator`.
-
-Caminho do script:
+Caminho:
 
 ```
 $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run
 ```
 
-## Registrar despesa — uma chamada, sem explicar antes
+## Registrar despesa — execute na hora
 
 Quando o usuário disser **gastei**, **paguei**, **comprei** (com valor):
 
-1. Chame **`terminal`** imediatamente — **não** explique "para registrar vou..."
-2. Use **`compose --run`** com o texto **exato** do usuário
-3. Só confirme ao usuário se o JSON tiver `"status":"ok"`
+1. **`terminal`** → `compose --run` com texto do usuário — **imediatamente**
+2. **Não pergunte** categoria nem data — `compose` usa **Outros** e **hoje** por padrão
+3. Confirme **só** se `"status":"ok"`
 
 ```json
 {
-  "command": "$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run compose --run \"Gastei 33 reais no C6bank crédito em 3x\""
+  "command": "$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run compose --run \"Gastei 70 reais no C6bank crédito em 3x\""
 }
 ```
 
-| Frase do usuário | Comando |
-|------------------|---------|
-| gastei X no crédito em Nx | `compose --run "<frase>"` |
-| mercado no Inter débito | `compose --run "<frase>"` |
-| transferi / saquei | `do record-transfer` com JSON |
-| pagamento misto (duas contas) | `do record-mixed-expense` |
+### Categoria e data (opcionais na mesma frase)
 
-**Crédito em N parcelas numa conta** → `compose --run` (vira `record-expense` com `installments`).
+Inclua na frase — **não** peça em mensagem separada:
 
-**Proibido:** narrar o que vai fazer; perguntar "quer que eu registre?"; responder "O comando..." sem executar.
+| Usuário diz | compose entende |
+|-------------|-----------------|
+| vestuário, roupas | categoria **Vestuário** |
+| mercado | **Alimentação** |
+| hoje / ontem | data automática |
+| (nada) | **Outros** + hoje |
+
+Exemplo completo em **uma mensagem**:
+
+```
+Gastei 70 reais no C6bank crédito em 3x vestuário hoje
+```
+
+### Se o usuário responder depois com categoria/data
+
+**Junte** com a frase anterior e rode `compose --run` de novo:
+
+```
+Gastei 70 reais no C6bank crédito em 3x vestuário hoje
+```
+
+Ou use JSON explícito:
+
+```json
+{
+  "command": "$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run compose --run '{\"amount\":70,\"account\":\"C6 Bank\",\"category\":\"Vestuário\",\"installments\":3}'"
+}
+```
+
+Categorias válidas: Alimentação, Transporte, Moradia, Saúde, Lazer, Educação, Vestuário, Outros.
+
+**Proibido:** perguntar categoria/data antes de executar; dizer "ocorreu um erro, tente mais tarde" sem mostrar o JSON de erro do terminal.
 
 ## Consultas
 
-| Usuário pergunta | `terminal` → `command` |
-|------------------|------------------------|
-| liste contas | `.../aurum-run do list-accounts` |
-| quanto gastei | `.../aurum-run do monthly-report` |
-| saldo | `.../aurum-run do balances` |
-| menu / ajuda | `.../aurum-run menu` |
-
-## Regras de domínio
-
-| Usuário diz | Ação |
-|-------------|------|
-| mercado | categoria Alimentação |
-| roupas | Vestuário |
-| crédito / Nx | conta `credit` (cartão) |
-| débito / PIX | conta `debit` (asset) |
-| sem categoria | Outros (compose faz isso) |
+| Pergunta | Comando |
+|----------|---------|
+| contas | `do list-accounts` |
+| gastos do mês | `do monthly-report` |
+| saldo | `do balances` |
 
 ## Fail closed
 
-- `compose` retorna erro de conta → `do list-accounts` e use nome exato
-- Confirme registro **só** após `"status":"ok"` no stdout
-- Se perguntarem "registrou?" → rode `do monthly-report` ou confira o último `compose --run`
-
-## Proibições
-
-- Chamar tool que não seja `terminal`
-- Explicar em vez de executar
-- Inventar saldos ou dizer que registrou sem `status: ok`
+- Erro de cartão sem `closing_day` → execute o `fix_command` do JSON ou `do update-account`
+- Conta errada → `do list-accounts`

@@ -173,7 +173,8 @@ hermes-aurum/
     │   └── scripts/
     │       ├── aurum-run      # entrada única (hint, do, legado)
     │       ├── catalog.py     # catálogo de intenções
-    │       ├── do.py          # dispatcher hint/help/do
+    │       ├── compose.py       # linguagem natural → record-expense
+    │       ├── do.py            # dispatcher hint/help/do/compose
     │       ├── ledger.py
     │       ├── rebuild_state.py
     │       ├── reports.py
@@ -197,25 +198,65 @@ Categorias padrão em **pt-BR**:
 
 Mantenha as chaves `expense` e `income`. Não precisa reiniciar o gateway.
 
-## Intenções vs comandos legados (v1.4+)
+## Intenções e comandos (v1.4+)
 
-O agente usa **`aurum-run`** como ponto de entrada. Preferência por intenções; comandos legados continuam disponíveis.
+Prefixo no servidor (ajuste se necessário):
 
-| Ação | Comando recomendado |
-|------|---------------------|
-| Não sabe o comando | `aurum-run hint "<pergunta do usuário>"` |
-| Catálogo completo | `aurum-run help --json` |
-| Listar contas | `aurum-run do list-accounts` |
-| Despesas do mês | `aurum-run do monthly-report` |
-| Saldo / patrimônio | `aurum-run do balances` |
-| Registrar despesa | `aurum-run do record-expense '<json>'` |
-| Transferência | `aurum-run do record-transfer '<json>'` |
-| Pagamento misto | `aurum-run do record-mixed-expense '<json>'` |
-| Nova categoria / conta | `aurum-run do add-category` / `add-account` |
+```bash
+AURUM="$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run"
+```
 
-Legado: `aurum-run report …`, `aurum-run ledger …`, `aurum-run state`.
+### Registrar despesa — forma recomendada (`compose --run`)
 
-**Versionamento:** incremente `distribution.yaml` a cada release, crie a tag Git `vX.Y.Z` e veja o fluxo completo em [docs/versioning.md](docs/versioning.md).
+**Uma frase em português.** Categoria e data são **opcionais** — o script preenche sozinho.
+
+| Você diz no Telegram | O que acontece |
+|----------------------|----------------|
+| `Gastei 70 reais no C6bank crédito em 3x` | Registra hoje, categoria **Outros**, 3 parcelas no cartão C6 |
+| `... vestuário hoje` na mesma frase | Categoria **Vestuário**, data hoje |
+| `... mercado` | Categoria **Alimentação** |
+
+```bash
+# Mínimo (categoria Outros, data hoje)
+"$AURUM" compose --run "Gastei 70 reais no C6bank crédito em 3x"
+
+# Completo em uma frase (recomendado)
+"$AURUM" compose --run "Gastei 70 reais no C6bank crédito em 3x vestuário hoje"
+
+# JSON explícito (quando o agente já montou os campos)
+"$AURUM" compose --run '{"amount":70,"account":"C6 Bank","category":"Vestuário","installments":3}'
+```
+
+**Não precisa** dizer "categoria Vestuário" de forma formal — `vestuário`, `roupas` ou `categoria vestuario` funcionam.
+
+### Categorias de despesa (nomes exatos no ledger)
+
+`Alimentação` · `Transporte` · `Moradia` · `Saúde` · `Lazer` · `Educação` · `Vestuário` · `Outros`
+
+Liste no servidor: `"$AURUM" do list-categories`
+
+### Consultas
+
+| Ação | Comando |
+|------|---------|
+| Listar contas (débito/crédito) | `"$AURUM" do list-accounts` |
+| Despesas do mês | `"$AURUM" do monthly-report` |
+| Saldo / patrimônio | `"$AURUM" do balances` |
+| Menu de ajuda | `"$AURUM" menu` |
+| Sugestão por pergunta | `"$AURUM" hint "listar contas"` |
+
+### Outras escritas
+
+| Ação | Comando |
+|------|---------|
+| Transferência / saque | `"$AURUM" do record-transfer '{"from":"Banco Inter","to":"Carteira","amount":50}'` |
+| Pagamento misto (2 contas) | `"$AURUM" do record-mixed-expense '{"category":"Vestuário","parts":[...]}'` |
+| Configurar cartão (1ª vez) | `"$AURUM" do update-account '{"account":"C6 Bank","credit_limit":10000,"closing_day":1,"due_day":10,"billing_profile":"br"}'` |
+| Nova categoria / conta | `"$AURUM" do add-category` / `add-account` |
+
+Legado: `"$AURUM" report …`, `"$AURUM" ledger …`, `"$AURUM" state`.
+
+**Versionamento:** incremente `distribution.yaml` a cada release, crie a tag Git `vX.Y.Z` e veja [docs/versioning.md](docs/versioning.md).
 
 ## Backup
 
