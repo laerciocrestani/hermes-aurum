@@ -28,6 +28,9 @@ case "$cmd" in
   menu)
     exec python3 "$HERE/do.py" menu
     ;;
+  compose)
+    exec python3 "$HERE/do.py" compose "$@"
+    ;;
   do)
     exec python3 "$HERE/do.py" run "$@"
     ;;

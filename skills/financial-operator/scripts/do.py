@@ -11,7 +11,8 @@ from contextlib import redirect_stdout
 from datetime import date
 from typing import Any
 
-from catalog import get_intent, help_payload, help_text, hint_payload, menu_text
+from catalog import AURUM_RUN, get_intent, help_payload, help_text, hint_payload, menu_text
+from compose import ComposeError, compose_payload
 from ledger import (
     cmd_accounts,
     cmd_append,
@@ -367,6 +368,30 @@ def run_intent(intent_name: str, argv: list[str]) -> dict[str, Any]:
         }
 
 
+def handle_compose(text: str, *, run: bool) -> dict[str, Any]:
+    paths = _paths()
+    try:
+        payload = compose_payload(text, paths)
+    except ComposeError as exc:
+        result: dict[str, Any] = {
+            "status": "error",
+            "message": str(exc),
+            "suggestion": f"{AURUM_RUN} do list-accounts",
+        }
+        result.update(exc.extra)
+        return result
+    except ValueError as exc:
+        return {"status": "error", "message": str(exc)}
+
+    if not run:
+        return payload
+
+    record = handle_record_expense(paths, json.dumps(payload["parsed"], ensure_ascii=False))
+    payload["result"] = record
+    payload["status"] = record.get("status", "error")
+    return payload
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Intenções do Aurum")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -378,6 +403,10 @@ def main() -> int:
     p_help.add_argument("--json", action="store_true")
 
     sub.add_parser("menu")
+
+    p_compose = sub.add_parser("compose")
+    p_compose.add_argument("--run", action="store_true")
+    p_compose.add_argument("text", nargs="+")
 
     p_run = sub.add_parser("run")
     p_run.add_argument("intent")
@@ -400,6 +429,12 @@ def main() -> int:
     if args.command == "menu":
         print(menu_text())
         return 0
+
+    if args.command == "compose":
+        text = " ".join(args.text)
+        result = handle_compose(text, run=args.run)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result.get("status") == "ok" else 1
 
     if args.command == "run":
         result = run_intent(args.intent, args.rest)

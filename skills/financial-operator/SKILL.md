@@ -1,7 +1,7 @@
 ---
 name: financial-operator
-description: "Registre e consulte finanças via tool terminal APENAS. Execute scripts shell com caminho absoluto. NÃO chame aurum_run, aurum-run, reports, ledger, financial_operator — essas tools NÃO EXISTEM."
-version: 1.4.2
+description: "Registre despesas com compose --run e consulte via terminal. NÃO chame aurum_run — só terminal com caminho absoluto."
+version: 1.4.3
 author: Aurum
 license: MIT
 metadata:
@@ -14,86 +14,68 @@ metadata:
 
 ## CRÍTICO — única tool: `terminal`
 
-No Hermes existe **somente** a tool **`terminal`** (parâmetro `command` = string shell).
+No Hermes existe **somente** a tool **`terminal`** (`command` = shell).
 
-**NÃO EXISTEM** tools chamadas:
-`aurum_run`, `aurum-run`, `aurum run`, `do`, `hint`, `help`, `reports`, `ledger`, `financial_operator`, `financial-operator`
+**NÃO EXISTEM** tools `aurum_run`, `aurum-run`, `reports`, `ledger`, `financial_operator`.
 
-Chamar qualquer nome acima **falha**. O script `aurum-run` é um **arquivo shell**, não uma tool.
-
-### Exemplo correto — listar contas
-
-Chame a tool **`terminal`** com:
-
-```json
-{
-  "command": "$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run do list-accounts"
-}
-```
-
-Leia o JSON do stdout. Use `debit` e `credit`. Responda em português.
-
-### Exemplo ERRADO (nunca faça)
-
-- Chamar tool `aurum_run` ❌
-- Chamar tool `aurum-run` ❌
-- Dizer "ferramenta não encontrada" e desistir ❌
-
-Se `terminal` falhar, corrija o **caminho shell** — não invente outra tool.
-
-Caminho absoluto padrão:
+Caminho do script:
 
 ```
 $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run
 ```
 
-## Pergunta → ação imediata
+## Registrar despesa — uma chamada, sem explicar antes
 
-| Usuário pergunta | `terminal` → `command` |
-|------------------|------------------------|
-| liste contas, débito e crédito | `.../aurum-run do list-accounts` |
-| comandos básicos, menu, ajuda | `.../aurum-run menu` |
-| quanto gastei este mês | `.../aurum-run do monthly-report` |
-| saldo, patrimônio | `.../aurum-run do balances` |
-| não sabe o comando | `.../aurum-run hint "<palavras do usuário>"` → depois execute o `command` do JSON com **`terminal`** |
+Quando o usuário disser **gastei**, **paguei**, **comprei** (com valor):
 
-**Proibido** dizer "sem contas" sem rodar `do list-accounts` e ver `account_count > 0`.
-
-## Escrita — sempre via `terminal`
+1. Chame **`terminal`** imediatamente — **não** explique "para registrar vou..."
+2. Use **`compose --run`** com o texto **exato** do usuário
+3. Só confirme ao usuário se o JSON tiver `"status":"ok"`
 
 ```json
 {
-  "command": "$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run do record-expense '{\"amount\":50,\"account\":\"Banco Inter\",\"category\":\"Alimentação\",\"description\":\"Mercado\"}'"
+  "command": "$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run compose --run \"Gastei 33 reais no C6bank crédito em 3x\""
 }
 ```
 
-| Intenção | Quando |
-|----------|--------|
-| `do record-expense` | Despesa simples (débito, PIX, crédito) |
-| `do record-transfer` | Transferência, saque entre contas |
-| `do record-mixed-expense` | Pagamento misto / parcelado |
-| `do record-income` | Receita |
-| `do add-category` | Categoria nova (após confirmação) |
-| `do add-account` | Conta nova |
+| Frase do usuário | Comando |
+|------------------|---------|
+| gastei X no crédito em Nx | `compose --run "<frase>"` |
+| mercado no Inter débito | `compose --run "<frase>"` |
+| transferi / saquei | `do record-transfer` com JSON |
+| pagamento misto (duas contas) | `do record-mixed-expense` |
+
+**Crédito em N parcelas numa conta** → `compose --run` (vira `record-expense` com `installments`).
+
+**Proibido:** narrar o que vai fazer; perguntar "quer que eu registre?"; responder "O comando..." sem executar.
+
+## Consultas
+
+| Usuário pergunta | `terminal` → `command` |
+|------------------|------------------------|
+| liste contas | `.../aurum-run do list-accounts` |
+| quanto gastei | `.../aurum-run do monthly-report` |
+| saldo | `.../aurum-run do balances` |
+| menu / ajuda | `.../aurum-run menu` |
 
 ## Regras de domínio
 
 | Usuário diz | Ação |
 |-------------|------|
-| mercado | `category`: Alimentação, `description`: Mercado |
-| roupas | `category`: Vestuário |
-| débito, PIX | conta em `debit` (asset) |
-| crédito, parcelado | conta em `credit` (liability) |
-| transferi, saquei | `do record-transfer` |
+| mercado | categoria Alimentação |
+| roupas | Vestuário |
+| crédito / Nx | conta `credit` (cartão) |
+| débito / PIX | conta `debit` (asset) |
+| sem categoria | Outros (compose faz isso) |
 
 ## Fail closed
 
-- Conta/categoria ausente → `do add-account` / `do add-category` ou pergunte — **nunca** chute
-- Confirme só após `"status":"ok"` no stdout
+- `compose` retorna erro de conta → `do list-accounts` e use nome exato
+- Confirme registro **só** após `"status":"ok"` no stdout
+- Se perguntarem "registrou?" → rode `do monthly-report` ou confira o último `compose --run`
 
 ## Proibições
 
 - Chamar tool que não seja `terminal`
-- Inventar saldos
-- Propor arquitetura ou `/menu` quando usuário pede ação — **execute** `menu` ou `do list-accounts`
-- Desistir após erro — use caminho absoluto do shell
+- Explicar em vez de executar
+- Inventar saldos ou dizer que registrou sem `status: ok`

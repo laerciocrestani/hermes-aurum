@@ -45,6 +45,14 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(result["match"]["intent"], "list-accounts")
         self.assertEqual(result["match"]["confidence"], "high")
 
+    def test_hint_matches_expense_with_installments(self) -> None:
+        result = hint_payload("Gastei 33 reais no C6bank crédito em 3x")
+        self.assertEqual(result["status"], "ok")
+        self.assertIsNotNone(result["match"])
+        assert result["match"] is not None
+        self.assertEqual(result["match"]["intent"], "record-expense")
+        self.assertIn("compose --run", result["match"]["command"])
+
     def test_hint_matches_record_transfer(self) -> None:
         result = hint_payload("transferi 50 reais da conta inter para carteira")
         self.assertEqual(result["status"], "ok")

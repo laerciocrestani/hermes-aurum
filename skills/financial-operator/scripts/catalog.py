@@ -7,7 +7,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
 
-CATALOG_VERSION = "1.4.2"
+CATALOG_VERSION = "1.4.3"
 
 AURUM_RUN = "$HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run"
 
@@ -42,15 +42,15 @@ INTENTS: tuple[Intent, ...] = (
         triggers_pt=(
             "contas",
             "conta",
-            "débito",
-            "debito",
-            "crédito",
-            "credito",
             "listar contas",
             "quais contas",
+            "minhas contas",
             "ativo",
             "passivo",
-            "banco",
+            "debito e credito",
+            "débito e crédito",
+            "contas debito",
+            "contas credito",
         ),
     ),
     Intent(
@@ -131,6 +131,14 @@ INTENTS: tuple[Intent, ...] = (
             "roupas",
             "vestuário",
             "vestuario",
+            "parcelado",
+            "em 2x",
+            "em 3x",
+            "em 9x",
+            "no credito",
+            "no crédito",
+            "no cartao",
+            "no cartão",
         ),
         args_schema={
             "amount": {"type": "number", "required": True},
@@ -180,10 +188,6 @@ INTENTS: tuple[Intent, ...] = (
             "resto no crédito",
             "uma parte",
             "o restante",
-            "parcelado",
-            "em 2x",
-            "em 3x",
-            "em 9x",
             "metade",
         ),
         args_schema={
@@ -298,18 +302,38 @@ def normalize_text(text: str) -> str:
 
 def _score_intent(query: str, intent: Intent) -> float:
     score = 0.0
+    seen_triggers: set[str] = set()
     for trigger in intent.triggers_pt:
         trigger_norm = normalize_text(trigger)
+        if trigger_norm in seen_triggers:
+            continue
+        seen_triggers.add(trigger_norm)
         if trigger_norm in query:
             score += len(trigger_norm.split()) + 1
     for token in query.split():
         if len(token) < 3:
             continue
+        seen_token_triggers: set[str] = set()
         for trigger in intent.triggers_pt:
             trigger_norm = normalize_text(trigger)
+            if trigger_norm in seen_token_triggers:
+                continue
+            seen_token_triggers.add(trigger_norm)
             if token in trigger_norm.split() or any(token in part for part in trigger_norm.split()):
                 score += 0.5
     return score
+
+
+def _looks_like_expense(query: str) -> bool:
+    return bool(re.search(r"\b(gastei|paguei|comprei|gasto)\b", query)) and bool(
+        re.search(r"\d", query)
+    )
+
+
+def compose_command(text: str, *, run: bool = False) -> str:
+    flag = " --run" if run else ""
+    escaped = text.replace('"', '\\"')
+    return f'{AURUM_RUN} compose{flag} "{escaped}"'
 
 
 def serialize_intent(intent: Intent) -> dict[str, Any]:
@@ -334,6 +358,7 @@ def help_payload() -> dict[str, Any]:
             "hint": f'{AURUM_RUN} hint "<palavras do usuário>"',
             "help_json": f"{AURUM_RUN} help --json",
             "menu": f"{AURUM_RUN} menu",
+            "compose_run": f'{AURUM_RUN} compose --run "<texto do usuário>"',
         },
         "forbidden_tools": [
             "aurum_run",
@@ -367,6 +392,10 @@ def hint_payload(query: str) -> dict[str, Any]:
 
     ranked.sort(key=lambda item: item[0], reverse=True)
 
+    if _looks_like_expense(normalized):
+        ranked = [(score + (15 if intent.name == "record-expense" else 0), intent) for score, intent in ranked]
+        ranked.sort(key=lambda item: item[0], reverse=True)
+
     if not ranked:
         alternatives = [serialize_intent(intent) for intent in INTENTS[:5]]
         return {
@@ -391,6 +420,9 @@ def hint_payload(query: str) -> dict[str, Any]:
         "command": intent_command(best.name),
         "description_pt": best.description_pt,
     }
+    if _looks_like_expense(normalized) and best.name == "record-expense":
+        match["command"] = compose_command(query, run=True)
+        match["description_pt"] = "Registrar despesa a partir do texto do usuário (compose --run)"
 
     alternatives = [
         {
@@ -418,6 +450,12 @@ def hint_payload(query: str) -> dict[str, Any]:
 
 def menu_text() -> str:
     return """Aurum — comandos básicos (use a tool terminal com estes comandos shell)
+
+Registrar despesa (copie o texto do usuário entre aspas):
+  $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run compose --run "gastei 50 reais no Inter débito mercado"
+
+Registrar despesa parcelada no crédito:
+  .../aurum-run compose --run "gastei 33 reais no C6bank crédito em 3x"
 
 Listar contas (débito e crédito):
   $HOME/.hermes/profiles/aurum/skills/financial-operator/scripts/aurum-run do list-accounts
