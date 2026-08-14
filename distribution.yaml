@@ -1,6 +1,6 @@
 name: aurum
-version: 1.4.5
-description: "Agente de finanças pessoais event-sourced — ledger, relatórios e mentoria sob demanda"
+version: 2.2.0
+description: "Agente de fluxo de caixa — lançamentos, saldo de débito e faturas de cartão"
 hermes_requires: ">=0.12.0"
 author: "Laercio Crestani"
 license: MIT
