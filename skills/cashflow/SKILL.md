@@ -1,7 +1,7 @@
 ---
 name: cashflow
-description: "Insere, remove ou edita lançamentos, contas mensais e parcelas no crédito. Execute apply imediatamente."
-version: 2.1.0
+description: "Insere, remove ou edita lançamentos, contas (saldo/fatura) e parcelas. Execute apply imediatamente."
+version: 2.2.0
 author: Aurum
 license: MIT
 metadata:
@@ -20,7 +20,7 @@ Caminho:
 $HOME/.hermes/profiles/aurum/skills/cashflow/scripts/aurum-run
 ```
 
-Quando o usuário descrever um gasto, uma receita, uma conta mensal, uma compra parcelada, uma correção ou uma exclusão, execute **na hora**. Não pergunte categoria nem data.
+Quando o usuário descrever um gasto, uma receita, uma conta bancária nova, um cartão, uma conta mensal, uma compra parcelada, uma correção ou uma exclusão, execute **na hora**. Não pergunte categoria nem data.
 
 ## Inserir
 
@@ -39,6 +39,20 @@ Defaults:
 | data | hoje |
 | categoria | inferida (`mercado` → Alimentação) ou **Outros** |
 | conta | inferida ou última usada / Carteira |
+
+## Contas de débito e cartões
+
+Débito **exige saldo inicial**. Crédito **exige dia de fechamento e dia de pagamento da fatura**. Se faltar, mostre o `ask` do JSON e rode `apply` de novo com a frase completa.
+
+```json
+{"command": "$HOME/.hermes/profiles/aurum/skills/cashflow/scripts/aurum-run apply \"Nova conta débito Itaú com saldo de 1500\""}
+```
+
+```json
+{"command": "$HOME/.hermes/profiles/aurum/skills/cashflow/scripts/aurum-run apply \"Novo cartão Inter, fecha dia 19, fatura dia 25\""}
+```
+
+Saldo da carteira: `accounts` ou `apply "Quanto tenho?"`.
 
 ## Contas mensais (água, luz, telefone)
 
@@ -93,7 +107,7 @@ Gera 5 cobranças futuras de R$ 200. `Cancela a compra em 5x` remove o plano.
 | hoje | `today` |
 | cobranças futuras | `upcoming` |
 | dia/mês | `list --date YYYY-MM-DD` / `list --month YYYY-MM` |
-| contas | `accounts` |
+| contas / saldo | `accounts` |
 | categorias | `categories` |
 
 ## Confirmação
@@ -104,4 +118,4 @@ Confirme **somente** se `"status":"ok"`. Use o campo `message`. Se vier `"status
 
 - Perguntar categoria ou data antes de executar
 - Inventar tools (`aurum_run`, `reports`, `ledger`)
-- Calcular saldo de cabeça — use `today` ou `list`
+- Calcular saldo de cabeça — use `accounts` ou `today`

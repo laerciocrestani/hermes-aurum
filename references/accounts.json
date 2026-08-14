@@ -2,18 +2,26 @@
   "accounts": [
     {
       "name": "Banco Inter",
+      "kind": "debit",
+      "initial_balance": 0,
       "aliases": ["inter", "banco inter"]
     },
     {
       "name": "Nubank",
+      "kind": "debit",
+      "initial_balance": 0,
       "aliases": ["nubank", "nu", "roxinho"]
     },
     {
       "name": "C6 Bank",
+      "kind": "debit",
+      "initial_balance": 0,
       "aliases": ["c6", "c6bank", "c6 bank", "c6banck"]
     },
     {
       "name": "Carteira",
+      "kind": "debit",
+      "initial_balance": 0,
       "aliases": ["carteira"]
     }
   ]

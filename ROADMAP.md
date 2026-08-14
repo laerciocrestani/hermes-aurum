@@ -2,6 +2,13 @@
 
 A v2 começa do zero: um agente de fluxo de caixa que entende o dia a dia.
 
+## v2.2 — Entregue
+
+- Conta de débito nova exige saldo inicial (alimenta o saldo da carteira)
+- Cartão novo exige dia de fechamento e dia de pagamento da fatura
+- Parcelas no crédito usam o ciclo do cartão quando ele existe
+- `accounts` / `Quanto tenho?` mostra saldos e ciclo
+
 ## v2.1 — Entregue
 
 - Contas mensais recorrentes (água, luz, telefone) com dia de vencimento
@@ -23,7 +30,6 @@ A v2 começa do zero: um agente de fluxo de caixa que entende o dia a dia.
 | Item | Notas |
 |------|--------|
 | Relatório mensal por categoria | Leitura agregada além de `list` |
-| Ciclo de fatura do cartão | Fechamento/vencimento além do Nx simples |
 | Mentoria sob demanda | Só depois que o fluxo de caixa estiver estável |
 | Aliases extras de conta na conversa | “itaú”, “caju”, etc. sem editar JSON |
 | Importação OFX/CSV | Fora do núcleo conversacional |
@@ -40,6 +46,7 @@ A v2 começa do zero: um agente de fluxo de caixa que entende o dia a dia.
 
 | Versão | Data | Notas |
 |--------|------|--------|
+| v2.2.0 | 2026-08-14 | Saldo inicial no débito; fechamento e fatura no cartão |
 | v2.1.0 | 2026-08-14 | Contas mensais, crédito em Nx e agenda de cobranças futuras |
 | v2.0.0 | 2026-08-14 | Reescrita: fluxo de caixa com insert/remove/edit a partir de mensagens |
 | v1.4.5 | 2026-06-17 | Última linha da geração event-sourced (ledger append-only) |

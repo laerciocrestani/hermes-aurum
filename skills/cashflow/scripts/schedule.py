@@ -107,6 +107,24 @@ def due_date(year: int, month: int, due_day: int) -> date:
     return date(year, month, min(max(int(due_day), 1), last))
 
 
+def invoice_due_date(closing_year: int, closing_month: int, closing_day: int, due_day: int) -> date:
+    """Vencimento da fatura cujo fechamento cai no mês informado."""
+    if due_day > closing_day:
+        return due_date(closing_year, closing_month, due_day)
+    year, month = add_months(closing_year, closing_month, 1)
+    return due_date(year, month, due_day)
+
+
+def first_card_due(purchase: date, closing_day: int, due_day: int) -> date:
+    """Primeiro vencimento da fatura após a compra, segundo o ciclo do cartão."""
+    if purchase.day <= closing_day:
+        year, month = purchase.year, purchase.month
+    else:
+        year, month = add_months(purchase.year, purchase.month, 1)
+    return invoice_due_date(year, month, closing_day, due_day)
+
+
+
 def parse_month(value: str) -> tuple[int, int]:
     year_s, month_s = value.split("-", 1)
     return int(year_s), int(month_s)

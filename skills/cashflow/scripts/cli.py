@@ -29,6 +29,9 @@ USAGE = """Aurum — fluxo de caixa
   apply "Conta de luz 150 por mês dia 10 no Inter"
   apply "Compra de 1000 no cartão de crédito banco Inter em 5x"
   apply "O que vence esse mês?"
+  apply "Nova conta débito Itaú com saldo de 1500"
+  apply "Novo cartão Inter, fecha dia 19, fatura dia 25"
+  apply "Quanto tenho?"
   add '{"type":"expense","amount":30,"category":"Alimentação","account":"Banco Inter"}'
   remove <id>
   edit <id> '{"amount":35}'
@@ -116,7 +119,7 @@ def _run(argv: list[str] | None = None) -> int:
         elif command == "upcoming":
             result = upcoming(paths, today=today, months=args.months)
         elif command == "accounts":
-            result = list_accounts(paths)
+            result = list_accounts(paths, today=today)
         elif command == "categories":
             result = list_categories(paths)
         else:

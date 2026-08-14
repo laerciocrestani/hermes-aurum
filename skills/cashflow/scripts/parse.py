@@ -77,6 +77,46 @@ BILL_RE = re.compile(
 PARCEL_RE = re.compile(r"\b(parcela|parcelas|parcelado|parcelamento|cartao|cartão)\b", re.IGNORECASE)
 LANCAMENTO_RE = re.compile(r"\b(lancamento|lançamento)\b", re.IGNORECASE)
 COMPRA_RE = re.compile(r"\b(compra|comprei)\b", re.IGNORECASE)
+ACCOUNT_CREATE_RE = re.compile(
+    r"\b(nova conta|novo cartao|adiciona(?:r)? (?:a |o )?(?:conta|cartao)|"
+    r"cadastra(?:r)? (?:a |o )?(?:conta|cartao)|abre conta|cria(?:r)? (?:a |o )?conta|"
+    r"configura(?:r)? (?:a |o )?(?:conta|cartao))\b",
+    re.IGNORECASE,
+)
+BALANCES_RE = re.compile(
+    r"\b(quanto tenho|saldo|saldos|minhas contas|saldo da carteira)\b",
+    re.IGNORECASE,
+)
+INITIAL_BALANCE_RE = re.compile(
+    r"\b(?:saldo(?: inicial)?(?: de)?|com saldo(?: de)?)\s+(?:de\s+)?(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?)"
+    r"|\bcom\s+(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?)\s*(?:reais|reias|real)\b",
+    re.IGNORECASE,
+)
+CLOSING_DAY_RE = re.compile(
+    r"\b(?:fechamento|fecha(?:mento)?)\s+(?:em\s+|dia\s+)?(\d{1,2})\b",
+    re.IGNORECASE,
+)
+PAYMENT_DAY_RE = re.compile(
+    r"\b(?:pagamento(?: da fatura)?|fatura|paga(?:mento)?)\s+(?:em\s+|dia\s+)?(\d{1,2})\b",
+    re.IGNORECASE,
+)
+
+KNOWN_BANKS = (
+    ("banco inter", "Banco Inter"),
+    ("c6 bank", "C6 Bank"),
+    ("c6bank", "C6 Bank"),
+    ("c6banck", "C6 Bank"),
+    ("nubank", "Nubank"),
+    ("carteira", "Carteira"),
+    ("picpay", "PicPay"),
+    ("bradesco", "Bradesco"),
+    ("santander", "Santander"),
+    ("banco itau", "Itaú"),
+    ("itau", "Itaú"),
+    ("caixa", "Caixa"),
+    ("inter", "Banco Inter"),
+    ("c6", "C6 Bank"),
+)
 
 METHOD_MAP = (
     ("debito", "debito"),
@@ -116,6 +156,9 @@ class ParsedIntent:
     kind: str | None = None
     installments: int | None = None
     due_day: int | None = None
+    account_kind: str | None = None
+    initial_balance: float | None = None
+    closing_day: int | None = None
     fields: dict[str, Any] = field(default_factory=dict)
     raw: str = ""
 
@@ -151,6 +194,70 @@ def extract_due_day(text: str) -> int | None:
     if 1 <= day <= 31:
         return day
     return None
+
+
+def extract_closing_day(text: str) -> int | None:
+    match = CLOSING_DAY_RE.search(text)
+    if not match:
+        return None
+    day = int(match.group(1))
+    return day if 1 <= day <= 31 else None
+
+
+def extract_payment_day(text: str) -> int | None:
+    match = PAYMENT_DAY_RE.search(text)
+    if not match:
+        return None
+    day = int(match.group(1))
+    return day if 1 <= day <= 31 else None
+
+
+def extract_initial_balance(text: str) -> float | None:
+    match = INITIAL_BALANCE_RE.search(text)
+    if not match:
+        return None
+    raw = match.group(1) or match.group(2)
+    return _parse_simple_amount(raw)
+
+
+def extract_account_kind(text: str) -> str | None:
+    norm = normalize_text(text)
+    if re.search(r"\b(cartao|credito)\b", norm) and not re.search(r"\bdebito\b", norm):
+        return "credit"
+    if re.search(r"\b(debito|carteira|pix)\b", norm):
+        return "debit"
+    if extract_closing_day(text) or extract_payment_day(text):
+        return "credit"
+    if extract_initial_balance(text) is not None:
+        return "debit"
+    return None
+
+
+def extract_new_account_name(text: str, catalog: Catalog | None = None) -> str | None:
+    norm = normalize_text(text)
+    hits: list[tuple[int, str]] = []
+    if catalog:
+        for account in catalog.accounts:
+            for alias in (account.name, *account.aliases):
+                needle = normalize_text(alias)
+                if contains_term(norm, needle):
+                    hits.append((len(needle), account.name))
+    for alias, name in KNOWN_BANKS:
+        if contains_term(norm, alias):
+            hits.append((len(alias), name))
+    if hits:
+        hits.sort(reverse=True)
+        return hits[0][1]
+    match = re.search(
+        r"(?:conta(?: de)?(?: debito)?|cartao(?: de credito)?)\s+([a-z0-9][a-z0-9 ]{1,30}?)(?:\s+com|\s+saldo|\s+fecha|\s+fechamento|\s+fatura|\s+pagamento|$)",
+        norm,
+    )
+    if not match:
+        return None
+    raw = match.group(1).strip()
+    if not raw:
+        return None
+    return " ".join(part.capitalize() for part in raw.split())
 
 
 def extract_amount(text: str) -> float | None:
@@ -269,18 +376,34 @@ def resolve_description(text: str, catalog: Catalog, category: str | None) -> st
     return category or "Lançamento"
 
 
-def resolve_account(text: str, catalog: Catalog) -> str | None:
+def resolve_account(text: str, catalog: Catalog, prefer_kind: str | None = None) -> str | None:
     norm = normalize_text(text)
-    hits: list[tuple[int, str]] = []
+    hits: list[tuple[int, int, str]] = []
     for account in catalog.accounts:
         for alias in (account.name, *account.aliases):
             needle = normalize_text(alias)
             if contains_term(norm, needle):
-                hits.append((len(needle), account.name))
+                kind_bonus = 1 if prefer_kind and account.kind == prefer_kind else 0
+                hits.append((len(needle), kind_bonus, account.name))
     if not hits:
         return None
     hits.sort(reverse=True)
-    return hits[0][1]
+    return hits[0][2]
+
+
+def is_account_setup(text: str) -> bool:
+    norm = normalize_text(text)
+    if ACCOUNT_CREATE_RE.search(norm):
+        return True
+    if extract_installments(text) or ADD_EXPENSE_RE.search(text) or COMPRA_RE.search(text):
+        return False
+    if extract_closing_day(text) and extract_payment_day(text):
+        return True
+    if extract_initial_balance(text) is not None and re.search(
+        r"\b(conta|debito|carteira)\b", norm
+    ) and not is_bill(text):
+        return True
+    return False
 
 
 def is_recurring(text: str) -> bool:
@@ -307,6 +430,14 @@ def is_schedule_message(text: str, *, installments: int | None) -> bool:
 def detect_action(text: str) -> str:
     if UPCOMING_RE.search(text):
         return "upcoming"
+    if BALANCES_RE.search(text) and not ADD_EXPENSE_RE.search(text) and not is_account_setup(text):
+        return "balances"
+    if is_account_setup(text):
+        if REMOVE_RE.search(text):
+            return "remove"
+        if EDIT_RE.search(text) and not ACCOUNT_CREATE_RE.search(normalize_text(text)):
+            return "edit"
+        return "add"
     if REMOVE_RE.search(text):
         return "remove"
     if EDIT_RE.search(text) and not ADD_EXPENSE_RE.search(text) and not ADD_INCOME_RE.search(text):
@@ -338,14 +469,22 @@ def detect_entry_type(text: str) -> str | None:
 def parse_message(text: str, catalog: Catalog, today: date) -> ParsedIntent:
     stripped = text.strip()
     installments = extract_installments(stripped)
-    due_day = extract_due_day(stripped)
+    closing_day = extract_closing_day(stripped)
+    payment_day = extract_payment_day(stripped)
+    initial_balance = extract_initial_balance(stripped)
+    account_kind = extract_account_kind(stripped)
     action = detect_action(stripped)
+    setup = action != "unknown" and is_account_setup(stripped)
+    due_day = payment_day if setup else (payment_day or extract_due_day(stripped))
     entry_type = detect_entry_type(stripped)
     amount = extract_amount(stripped)
     old_amount, new_amount = extract_old_and_new_amount(stripped)
     method = detect_method(stripped)
     category = resolve_category(stripped, catalog, entry_type or "expense")
-    account = resolve_account(stripped, catalog)
+    prefer_kind = "credit" if (method == "credito" or installments or account_kind == "credit") else "debit"
+    account = resolve_account(stripped, catalog, prefer_kind=prefer_kind)
+    if is_account_setup(stripped):
+        account = extract_new_account_name(stripped, catalog) or account
     description = resolve_description(stripped, catalog, category)
     parsed_date = parse_date_from_text(stripped, today)
     last = bool(LAST_RE.search(normalize_text(stripped)))
@@ -354,7 +493,13 @@ def parse_message(text: str, catalog: Catalog, today: date) -> ParsedIntent:
     target = "entry"
     paying_now = bool(ADD_EXPENSE_RE.search(stripped)) and not installments and not is_recurring(stripped)
 
-    if action == "upcoming":
+    if action == "balances":
+        target = "account"
+    elif is_account_setup(stripped):
+        target = "account"
+        kind = account_kind or ("credit" if closing_day or payment_day else "debit")
+        method = "credito" if kind == "credit" else (method or "debito")
+    elif action == "upcoming":
         target = "schedule"
     elif installments:
         kind = "installment"
@@ -417,6 +562,9 @@ def parse_message(text: str, catalog: Catalog, today: date) -> ParsedIntent:
         kind=kind,
         installments=installments,
         due_day=due_day,
+        account_kind=account_kind if target == "account" else None,
+        initial_balance=initial_balance,
+        closing_day=closing_day,
         fields=fields,
         raw=stripped,
     )

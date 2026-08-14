@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="ROADMAP.md"><img src="https://img.shields.io/badge/status-v2.1-blue" alt="Status" /></a>
+  <a href="ROADMAP.md"><img src="https://img.shields.io/badge/status-v2.2-blue" alt="Status" /></a>
   <a href="https://github.com/NousResearch/hermes-agent"><img src="https://img.shields.io/badge/Hermes-Agent-blue" alt="Hermes" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License" /></a>
 </p>
@@ -19,7 +19,7 @@
 
 O **Aurum** é um agente conversacional para o [Hermes Agent](https://github.com/NousResearch/hermes-agent). Você descreve situações rotineiras — no CLI ou no Telegram — e ele atualiza o fluxo de caixa.
 
-Esta é a **v2**. O núcleo: **inserir, remover ou editar** lançamentos do dia, **contas mensais** e **cobranças no crédito** (incluindo parcelado).
+Esta é a **v2**. O núcleo: lançamentos do dia, **contas de débito com saldo inicial**, **cartão com fechamento/fatura**, contas mensais e parcelas.
 
 ## Exemplo
 
@@ -45,6 +45,9 @@ Outros exemplos:
 | `Na verdade foi 35, não 30` | Localiza o de R$ 30 e troca para R$ 35 |
 | `Conta de luz 150 por mês dia 10` | Agenda conta mensal (vence dia 10) |
 | `Compra de 1000 no crédito Inter em 5x` | 5 cobranças de R$ 200 no cartão |
+| `Nova conta débito Itaú com saldo de 1500` | Cadastra débito e inicia o saldo da carteira |
+| `Novo cartão Inter, fecha dia 19, fatura dia 25` | Cadastra cartão com ciclo de fatura |
+| `Quanto tenho?` | Saldos de débito + ciclo dos cartões |
 | `O que vence esse mês?` | Lista débitos e parcelas em aberto |
 
 Categoria e data são opcionais. Sem categoria → **Outros**. Sem data → **hoje**.
@@ -59,8 +62,10 @@ Categoria e data são opcionais. Sem categoria → **Outros**. Sem data → **ho
 - Contas mensais recorrentes (água, luz, telefone) com vencimento
 - Compras no crédito em Nx, projetadas mês a mês
 - Agenda de cobranças futuras (`upcoming`)
+- Conta de débito com **saldo inicial** (saldo da carteira derivado)
+- Cartão de crédito com **dia de fechamento** e **dia de pagamento da fatura**
 
-Ainda **não** faz: mentoria financeira, ciclo de fatura com fechamento/vencimento do cartão, patrimônio derivado, Open Finance.
+Ainda **não** faz: mentoria financeira, patrimônio consolidado além das contas, Open Finance.
 
 O ledger da v1 (`ledger.jsonl` append-only) **não é migrado**. A v2 usa `data/cashflow.jsonl` com id por linha.
 
@@ -109,7 +114,7 @@ Despesa: `Alimentação` · `Transporte` · `Moradia` · `Saúde` · `Lazer` · 
 
 Receita: `Salário` · `Freelance` · `Investimentos` · `Outros`
 
-Contas seed: Banco Inter, Nubank, C6 Bank, Carteira.
+Contas seed (débito, saldo inicial 0): Banco Inter, Nubank, C6 Bank, Carteira. Ao cadastrar uma nova, débito pede saldo inicial; cartão pede fechamento e pagamento da fatura.
 
 ## CLI (`aurum-run`)
 
@@ -119,8 +124,9 @@ AURUM="$HOME/.hermes/profiles/aurum/skills/cashflow/scripts/aurum-run"
 "$AURUM" apply "Gastei 30 reais em mercado no débito com o banco Inter"
 "$AURUM" apply "Conta de luz 150 por mês dia 10 no Inter"
 "$AURUM" apply "Compra de 1000 no cartão de crédito banco Inter em 5x"
-"$AURUM" apply "O que vence esse mês?"
-"$AURUM" upcoming
+"$AURUM" apply "Nova conta débito Itaú com saldo de 1500"
+"$AURUM" apply "Novo cartão Inter, fecha dia 19, fatura dia 25"
+"$AURUM" accounts
 "$AURUM" today
 "$AURUM" list --month 2026-08
 "$AURUM" remove cf_a1b2c3d4e5

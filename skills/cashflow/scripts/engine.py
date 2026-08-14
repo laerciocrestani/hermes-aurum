@@ -5,13 +5,14 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from catalog import Catalog, load_catalog
+from catalog import Account, Catalog, find_account, load_catalog, upsert_account
 from parse import ParsedIntent, parse_message
 from paths import Paths, ensure_runtime_files
 from schedule import (
     EDITABLE_FIELDS as SCHEDULE_FIELDS,
     append_obligation,
     edit_obligation,
+    first_card_due,
     load_obligations,
     project_charges,
     remove_obligation,
@@ -28,6 +29,183 @@ from store import (
 )
 
 DEFAULT_ACCOUNT = "Carteira"
+
+def describe_account(account: Account, *, balance: float | None = None) -> str:
+    if account.kind == "credit":
+        return (
+            f"Cartão {account.name}: fecha dia {account.closing_day}, "
+            f"fatura dia {account.due_day}."
+        )
+    initial = format_brl(float(account.initial_balance))
+    if balance is None:
+        return f"Conta débito {account.name} com saldo inicial {initial}."
+    return (
+        f"Conta débito {account.name} com saldo inicial {initial}. "
+        f"Saldo atual {format_brl(balance)}."
+    )
+
+
+def credit_account_name(base: str, catalog: Catalog) -> str:
+    card = f"{base} Cartão"
+    existing_card = find_account(catalog, card)
+    if existing_card:
+        return existing_card.name
+    existing = find_account(catalog, base)
+    if existing and existing.kind == "credit":
+        return existing.name
+    if existing and existing.kind == "debit":
+        return card
+    return card
+
+
+def credit_aliases(base: str, catalog: Catalog) -> tuple[str, ...]:
+    aliases = [base, f"{base} cartão", f"cartão {base}", f"{base} crédito"]
+    source = find_account(catalog, base)
+    if source:
+        aliases.append(source.name)
+        aliases.extend(source.aliases)
+        for alias in source.aliases:
+            aliases.extend((f"{alias} cartão", f"cartão {alias}", f"{alias} crédito"))
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for item in aliases:
+        key = item.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        ordered.append(item)
+    return tuple(ordered)
+
+
+def compute_account_rows(
+    catalog: Catalog,
+    entries: list[dict[str, Any]],
+    obligations: list[dict[str, Any]],
+    today: date,
+) -> list[dict[str, Any]]:
+    charges = project_charges(obligations, today, months=6, cashflow=entries)
+    rows: list[dict[str, Any]] = []
+    for account in catalog.accounts:
+        if account.kind == "credit":
+            open_amount = sum(
+                float(row["amount"])
+                for row in charges
+                if row.get("account") == account.name and row.get("status") != "settled"
+            )
+            credit_spent = sum(
+                float(entry.get("amount") or 0)
+                for entry in entries
+                if entry.get("account") == account.name
+                and entry.get("type") == "expense"
+                and entry.get("method") == "credito"
+            )
+            rows.append(
+                {
+                    "name": account.name,
+                    "kind": "credit",
+                    "closing_day": account.closing_day,
+                    "due_day": account.due_day,
+                    "open": round(open_amount + credit_spent, 2),
+                    "aliases": list(account.aliases),
+                }
+            )
+            continue
+        balance = float(account.initial_balance)
+        for entry in entries:
+            if entry.get("account") != account.name:
+                continue
+            if entry.get("method") == "credito":
+                continue
+            amount = float(entry.get("amount") or 0)
+            if entry.get("type") == "income":
+                balance += amount
+            elif entry.get("type") == "expense":
+                balance -= amount
+        rows.append(
+            {
+                "name": account.name,
+                "kind": "debit",
+                "initial_balance": round(float(account.initial_balance), 2),
+                "balance": round(balance, 2),
+                "aliases": list(account.aliases),
+            }
+        )
+    return rows
+
+
+def apply_account(paths: Paths, parsed: ParsedIntent, today: date) -> dict[str, Any]:
+    catalog = load_catalog(paths)
+    kind = parsed.kind or parsed.account_kind or "debit"
+    base_name = parsed.account
+    if not base_name:
+        raise CashflowError(
+            "Não identifiquei o nome da conta. Diga o banco, por exemplo Itaú ou Inter.",
+            {"missing": ["name"], "ask": "Qual o nome da conta ou do cartão?"},
+        )
+    if kind == "credit":
+        if parsed.closing_day is None or parsed.due_day is None:
+            missing = [item for item, value in (("closing_day", parsed.closing_day), ("due_day", parsed.due_day)) if value is None]
+            raise CashflowError(
+                "Cartão de crédito exige dia de fechamento e dia de pagamento da fatura. "
+                "Ex.: 'Novo cartão Inter, fecha dia 19, fatura dia 25'.",
+                {
+                    "missing": missing,
+                    "ask": "Qual o dia de fechamento e o dia de pagamento da fatura?",
+                },
+            )
+        name = credit_account_name(base_name, catalog)
+        existing = find_account(catalog, name)
+        account = Account(
+            name=name,
+            aliases=existing.aliases if existing else credit_aliases(base_name, catalog),
+            kind="credit",
+            closing_day=parsed.closing_day,
+            due_day=parsed.due_day,
+        )
+    else:
+        if parsed.initial_balance is None:
+            raise CashflowError(
+                "Conta de débito exige saldo inicial para o saldo da carteira. "
+                "Ex.: 'Nova conta débito Itaú com saldo de 1500'.",
+                {"missing": ["initial_balance"], "ask": "Qual o saldo inicial da conta?"},
+            )
+        existing = find_account(catalog, base_name)
+        account = Account(
+            name=base_name,
+            aliases=existing.aliases if existing else (base_name.casefold(),),
+            kind="debit",
+            initial_balance=round(float(parsed.initial_balance), 2),
+        )
+    stored = upsert_account(paths, account)
+    catalog = load_catalog(paths)
+    rows = compute_account_rows(catalog, load_entries(paths.cashflow), load_obligations(paths.schedule), today)
+    current = next((row for row in rows if row["name"] == stored.name), None)
+    balance = None if not current or stored.kind == "credit" else current.get("balance")
+    action = "add_account"
+    return _ok(
+        action,
+        message=describe_account(stored, balance=balance),
+        account=current or account_to_public(stored),
+        accounts=rows,
+    )
+
+
+def account_to_public(account: Account) -> dict[str, Any]:
+    if account.kind == "credit":
+        return {
+            "name": account.name,
+            "kind": "credit",
+            "closing_day": account.closing_day,
+            "due_day": account.due_day,
+            "aliases": list(account.aliases),
+        }
+    return {
+        "name": account.name,
+        "kind": "debit",
+        "initial_balance": round(float(account.initial_balance), 2),
+        "aliases": list(account.aliases),
+    }
+
 
 
 class CashflowError(ValueError):
@@ -210,7 +388,19 @@ def validate_entry(entry: dict[str, Any], catalog: Catalog) -> None:
 
 
 def _resolve_account(parsed: ParsedIntent, catalog: Catalog, entries: list[dict[str, Any]]) -> str:
-    account = parsed.account or last_account(entries) or DEFAULT_ACCOUNT
+    name = parsed.account
+    if name and (parsed.method == "credito" or parsed.kind == "installment"):
+        card = find_account(catalog, f"{name} Cartão")
+        if card:
+            return card.name
+        current = find_account(catalog, name)
+        if current and current.kind == "credit":
+            return current.name
+    if name:
+        found = find_account(catalog, name)
+        if found:
+            return found.name
+    account = name or last_account(entries) or DEFAULT_ACCOUNT
     names = {item.name for item in catalog.accounts}
     if account not in names:
         return DEFAULT_ACCOUNT if DEFAULT_ACCOUNT in names else next(iter(names))
@@ -292,6 +482,14 @@ def build_installment(parsed: ParsedIntent, catalog: Catalog, entries: list[dict
     total = round(float(parsed.amount), 2)
     parcels = split_installments(total, count)
     category = _resolve_category(parsed, catalog)
+    account_name = _resolve_account(parsed, catalog, entries)
+    due_day = parsed.due_day or today.day
+    start_month = today.strftime("%Y-%m")
+    card = find_account(catalog, account_name)
+    if card and card.kind == "credit" and card.closing_day and card.due_day:
+        first_due = first_card_due(today, card.closing_day, card.due_day)
+        due_day = first_due.day
+        start_month = first_due.strftime("%Y-%m")
     return {
         "kind": "installment",
         "description": parsed.description or "Compra",
@@ -299,10 +497,10 @@ def build_installment(parsed: ParsedIntent, catalog: Catalog, entries: list[dict
         "amount": parcels[0],
         "total": total,
         "installments": count,
-        "account": _resolve_account(parsed, catalog, entries),
+        "account": account_name,
         "method": parsed.method or "credito",
-        "due_day": parsed.due_day or today.day,
-        "start_month": today.strftime("%Y-%m"),
+        "due_day": due_day,
+        "start_month": start_month,
         "active": True,
     }
 
@@ -393,15 +591,29 @@ def apply_text(paths: Paths, text: str, today: date | None = None) -> dict[str, 
     today = today or date.today()
     catalog = load_catalog(paths)
     parsed = parse_message(text, catalog, today)
+    try:
+        return _dispatch(paths, parsed, today, catalog)
+    except CashflowError as exc:
+        return _error(str(exc), **exc.extra)
+
+
+def _dispatch(paths: Paths, parsed: ParsedIntent, today: date, catalog: Catalog) -> dict[str, Any]:
     if parsed.action == "unknown":
         return _error(
             "Não entendi se é para inserir, remover ou editar. "
             "Exemplos: 'Gastei 30 reais no mercado', 'Conta de luz 150 por mês', "
-            "'Compra de 1000 no crédito Inter em 5x', 'O que vence esse mês?'.",
+            "'Compra de 1000 no crédito Inter em 5x', 'Nova conta débito Itaú com saldo de 1500', "
+            "'Novo cartão Inter, fecha dia 19, fatura dia 25'.",
             parsed={"action": parsed.action, "raw": parsed.raw},
         )
     if parsed.action == "upcoming" or (parsed.action == "list" and parsed.target == "schedule"):
         return upcoming(paths, today=today)
+    if parsed.action == "balances" or (parsed.target == "account" and parsed.action in {"list", "balances"}):
+        return list_accounts(paths, today=today)
+    if parsed.target == "account":
+        if parsed.action in {"add", "edit"}:
+            return apply_account(paths, parsed, today)
+        return _error("Para contas, use cadastro com saldo inicial (débito) ou fechamento/fatura (crédito).")
     if parsed.target == "schedule":
         return _apply_schedule(paths, parsed, today, catalog)
     if parsed.action == "add":
@@ -598,10 +810,38 @@ def edit_by_id(paths: Paths, entry_id: str, fields: dict[str, Any]) -> dict[str,
     return _ok("edit", message=f"Atualizado. {describe_entry(updated)}", entry=updated, changes=fields)
 
 
-def list_accounts(paths: Paths) -> dict[str, Any]:
+def list_accounts(paths: Paths, today: date | None = None) -> dict[str, Any]:
+    ensure_runtime_files(paths)
+    today = today or date.today()
     catalog = load_catalog(paths)
-    rows = [{"name": account.name, "aliases": list(account.aliases)} for account in catalog.accounts]
-    return _ok("accounts", accounts=rows, count=len(rows))
+    rows = compute_account_rows(
+        catalog,
+        load_entries(paths.cashflow),
+        load_obligations(paths.schedule),
+        today,
+    )
+    debit_total = round(sum(float(row.get("balance") or 0) for row in rows if row.get("kind") == "debit"), 2)
+    return _ok(
+        "accounts",
+        accounts=rows,
+        count=len(rows),
+        totals={"debit": debit_total},
+        message=_accounts_message(rows, debit_total),
+    )
+
+
+def _accounts_message(rows: list[dict[str, Any]], debit_total: float) -> str:
+    if not rows:
+        return "Nenhuma conta cadastrada."
+    parts = [f"Saldo em contas de débito: {format_brl(debit_total)}."]
+    for row in rows:
+        if row.get("kind") == "debit":
+            parts.append(f"{row['name']} {format_brl(float(row.get('balance') or 0))}")
+        else:
+            parts.append(
+                f"{row['name']} fecha dia {row.get('closing_day')} / fatura dia {row.get('due_day')}"
+            )
+    return " · ".join(parts)
 
 
 def list_categories(paths: Paths) -> dict[str, Any]:
@@ -628,5 +868,8 @@ def _public_parsed(parsed: ParsedIntent) -> dict[str, Any]:
         "kind": parsed.kind,
         "installments": parsed.installments,
         "due_day": parsed.due_day,
+        "account_kind": parsed.account_kind,
+        "initial_balance": parsed.initial_balance,
+        "closing_day": parsed.closing_day,
         "fields": parsed.fields,
     }
