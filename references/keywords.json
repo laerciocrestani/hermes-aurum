@@ -34,7 +34,9 @@
       "energia",
       "agua",
       "internet",
-      "iptu"
+      "iptu",
+      "telefone",
+      "celular"
     ],
     "Saúde": [
       "farmacia",
@@ -82,6 +84,10 @@
     "Padaria": ["padaria"],
     "Farmácia": ["farmacia"],
     "Aluguel": ["aluguel"],
+    "Água": ["agua", "conta de agua"],
+    "Luz": ["luz", "energia", "conta de luz"],
+    "Telefone": ["telefone", "celular"],
+    "Internet": ["internet"],
     "Combustível": ["gasolina", "combustivel"]
   }
 }

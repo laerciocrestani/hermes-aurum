@@ -1,7 +1,7 @@
 ---
 name: cashflow
-description: "Insere, remove ou edita o fluxo de caixa a partir de mensagens do dia a dia. Execute apply imediatamente."
-version: 2.0.0
+description: "Insere, remove ou edita lançamentos, contas mensais e parcelas no crédito. Execute apply imediatamente."
+version: 2.1.0
 author: Aurum
 license: MIT
 metadata:
@@ -20,7 +20,7 @@ Caminho:
 $HOME/.hermes/profiles/aurum/skills/cashflow/scripts/aurum-run
 ```
 
-Quando o usuário descrever um gasto, uma receita, uma correção ou uma exclusão, execute **na hora**. Não pergunte categoria nem data.
+Quando o usuário descrever um gasto, uma receita, uma conta mensal, uma compra parcelada, uma correção ou uma exclusão, execute **na hora**. Não pergunte categoria nem data.
 
 ## Inserir
 
@@ -39,6 +39,32 @@ Defaults:
 | data | hoje |
 | categoria | inferida (`mercado` → Alimentação) ou **Outros** |
 | conta | inferida ou última usada / Carteira |
+
+## Contas mensais (água, luz, telefone)
+
+Gatilhos: *conta de*, *por mês*, *mensal*, *todo mês*.
+
+```json
+{"command": "$HOME/.hermes/profiles/aurum/skills/cashflow/scripts/aurum-run apply \"Conta de luz 150 por mês dia 10 no Inter\""}
+```
+
+```json
+{"command": "$HOME/.hermes/profiles/aurum/skills/cashflow/scripts/aurum-run apply \"Muda a água para 90\""}
+```
+
+```json
+{"command": "$HOME/.hermes/profiles/aurum/skills/cashflow/scripts/aurum-run apply \"Apaga a conta de telefone\""}
+```
+
+`Paguei a luz 150` continua sendo lançamento do dia (não agenda).
+
+## Crédito parcelado
+
+```json
+{"command": "$HOME/.hermes/profiles/aurum/skills/cashflow/scripts/aurum-run apply \"Compra de 1000 no cartão de crédito banco Inter em 5x\""}
+```
+
+Gera 5 cobranças futuras de R$ 200. `Cancela a compra em 5x` remove o plano.
 
 ## Remover
 
@@ -65,6 +91,7 @@ Defaults:
 | Pergunta | Comando |
 |----------|---------|
 | hoje | `today` |
+| cobranças futuras | `upcoming` |
 | dia/mês | `list --date YYYY-MM-DD` / `list --month YYYY-MM` |
 | contas | `accounts` |
 | categorias | `categories` |

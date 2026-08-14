@@ -1,6 +1,6 @@
 name: aurum
-version: 2.0.0
-description: "Agente de fluxo de caixa pessoal — registra, remove e edita lançamentos do dia a dia"
+version: 2.1.0
+description: "Agente de fluxo de caixa — lançamentos do dia a dia, contas mensais e cobranças no crédito"
 hermes_requires: ">=0.12.0"
 author: "Laercio Crestani"
 license: MIT

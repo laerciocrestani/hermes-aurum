@@ -6,11 +6,11 @@
 
 <p align="center">
   <strong>Agente de fluxo de caixa para Hermes</strong><br/>
-  Recebe o dia a dia em linguagem natural · insere, remove e edita lançamentos
+  Recebe o dia a dia em linguagem natural · lançamentos, contas mensais e crédito parcelado
 </p>
 
 <p align="center">
-  <a href="ROADMAP.md"><img src="https://img.shields.io/badge/status-v2.0-blue" alt="Status" /></a>
+  <a href="ROADMAP.md"><img src="https://img.shields.io/badge/status-v2.1-blue" alt="Status" /></a>
   <a href="https://github.com/NousResearch/hermes-agent"><img src="https://img.shields.io/badge/Hermes-Agent-blue" alt="Hermes" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License" /></a>
 </p>
@@ -19,7 +19,7 @@
 
 O **Aurum** é um agente conversacional para o [Hermes Agent](https://github.com/NousResearch/hermes-agent). Você descreve situações rotineiras — no CLI ou no Telegram — e ele atualiza o fluxo de caixa.
 
-Esta é a **v2**, reescrita do zero. O objetivo inicial é estreito: **inserir, remover ou editar um lançamento** e **categorizar** a partir da mensagem.
+Esta é a **v2**. O núcleo: **inserir, remover ou editar** lançamentos do dia, **contas mensais** e **cobranças no crédito** (incluindo parcelado).
 
 ## Exemplo
 
@@ -43,6 +43,9 @@ Outros exemplos:
 | `Remove o gasto de 30 reais no mercado` | Remove o lançamento que combina |
 | `Corrige o valor para 35` | Edita o valor do último lançamento |
 | `Na verdade foi 35, não 30` | Localiza o de R$ 30 e troca para R$ 35 |
+| `Conta de luz 150 por mês dia 10` | Agenda conta mensal (vence dia 10) |
+| `Compra de 1000 no crédito Inter em 5x` | 5 cobranças de R$ 200 no cartão |
+| `O que vence esse mês?` | Lista débitos e parcelas em aberto |
 
 Categoria e data são opcionais. Sem categoria → **Outros**. Sem data → **hoje**.
 
@@ -50,11 +53,14 @@ Categoria e data são opcionais. Sem categoria → **Outros**. Sem data → **ho
 
 - Interpreta mensagens do dia a dia (`gastei`, `paguei`, `recebi`, `apaga`, `corrige`)
 - Insere despesa ou receita no fluxo de caixa do dia
-- Categoriza (`mercado` → Alimentação, `uber` → Transporte, …)
-- Identifica conta e forma de pagamento (`Inter` + `débito`)
+- Categoriza (`mercado` → Alimentação, `luz` → Moradia, …)
+- Identifica conta e forma de pagamento (`Inter` + `débito` / `crédito`)
 - Remove ou edita um lançamento existente (por mensagem ou por `id`)
+- Contas mensais recorrentes (água, luz, telefone) com vencimento
+- Compras no crédito em Nx, projetadas mês a mês
+- Agenda de cobranças futuras (`upcoming`)
 
-Ainda **não** faz: mentoria financeira, cartão com fatura/parcelas, patrimônio derivado, Open Finance.
+Ainda **não** faz: mentoria financeira, ciclo de fatura com fechamento/vencimento do cartão, patrimônio derivado, Open Finance.
 
 O ledger da v1 (`ledger.jsonl` append-only) **não é migrado**. A v2 usa `data/cashflow.jsonl` com id por linha.
 
@@ -77,7 +83,8 @@ Dados do usuário (não versionados):
 
 | Arquivo | Função |
 |---------|--------|
-| `data/cashflow.jsonl` | Lançamentos |
+| `data/cashflow.jsonl` | Lançamentos do dia |
+| `data/schedule.jsonl` | Contas mensais e parcelamentos |
 | `data/accounts.json` | Contas em uso (cópia do seed na 1ª execução) |
 | `data/categories.json` | Categorias em uso |
 
@@ -110,8 +117,10 @@ Contas seed: Banco Inter, Nubank, C6 Bank, Carteira.
 AURUM="$HOME/.hermes/profiles/aurum/skills/cashflow/scripts/aurum-run"
 
 "$AURUM" apply "Gastei 30 reais em mercado no débito com o banco Inter"
-"$AURUM" apply "Apaga o último lançamento"
-"$AURUM" apply "Corrige o valor para 35"
+"$AURUM" apply "Conta de luz 150 por mês dia 10 no Inter"
+"$AURUM" apply "Compra de 1000 no cartão de crédito banco Inter em 5x"
+"$AURUM" apply "O que vence esse mês?"
+"$AURUM" upcoming
 "$AURUM" today
 "$AURUM" list --month 2026-08
 "$AURUM" remove cf_a1b2c3d4e5

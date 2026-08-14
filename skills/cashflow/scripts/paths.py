@@ -13,6 +13,7 @@ class Paths:
     profile_root: Path
     references: Path
     cashflow: Path
+    schedule: Path
     accounts: Path
     categories: Path
     keywords: Path
@@ -52,6 +53,7 @@ def get_paths(start: Path | None = None) -> Paths:
         profile_root=profile_root,
         references=refs,
         cashflow=data / "cashflow.jsonl",
+        schedule=data / "schedule.jsonl",
         accounts=data / "accounts.json",
         categories=data / "categories.json",
         keywords=data / "keywords.json",
@@ -77,3 +79,5 @@ def ensure_runtime_files(paths: Paths) -> None:
         shutil.copy2(src, dest)
     if not paths.cashflow.exists():
         paths.cashflow.write_text("", encoding="utf-8")
+    if not paths.schedule.exists():
+        paths.schedule.write_text("", encoding="utf-8")

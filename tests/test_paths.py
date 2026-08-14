@@ -19,6 +19,7 @@ class PathsTests(unittest.TestCase):
             self.assertTrue(paths.accounts.is_file())
             self.assertTrue(paths.categories.is_file())
             self.assertTrue(paths.cashflow.is_file())
+            self.assertTrue(paths.schedule.is_file())
 
 
 if __name__ == "__main__":

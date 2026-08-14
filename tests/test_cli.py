@@ -53,6 +53,13 @@ class CliTests(unittest.TestCase):
         self.assertEqual(listed["count"], 1)
         self.assertEqual(listed["totals"]["expense"], 30.0)
 
+    def test_upcoming_via_cli(self) -> None:
+        created = self._run("apply", "Conta de luz 150 por mês dia 20 no Inter")
+        self.assertEqual(created["_exit"], 0)
+        listed = self._run("upcoming")
+        self.assertEqual(listed["_exit"], 0)
+        self.assertGreaterEqual(listed["count"], 1)
+
     def test_accounts_and_categories(self) -> None:
         accounts = self._run("accounts")
         categories = self._run("categories")

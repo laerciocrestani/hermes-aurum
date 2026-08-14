@@ -20,16 +20,21 @@ from engine import (
     list_categories,
     list_entries,
     remove_by_id,
+    upcoming,
 )
 from paths import get_paths
 
 USAGE = """Aurum — fluxo de caixa
   apply "Gastei 30 reais em mercado no débito com o banco Inter"
+  apply "Conta de luz 150 por mês dia 10 no Inter"
+  apply "Compra de 1000 no cartão de crédito banco Inter em 5x"
+  apply "O que vence esse mês?"
   add '{"type":"expense","amount":30,"category":"Alimentação","account":"Banco Inter"}'
   remove <id>
   edit <id> '{"amount":35}'
   list [--date YYYY-MM-DD] [--month YYYY-MM]
   today
+  upcoming [--months 6]
   accounts
   categories
 """
@@ -82,6 +87,8 @@ def _run(argv: list[str] | None = None) -> int:
     list_cmd.add_argument("--limit", type=int)
 
     sub.add_parser("today", help="Lançamentos de hoje")
+    upcoming_cmd = sub.add_parser("upcoming", help="Cobranças e débitos futuros")
+    upcoming_cmd.add_argument("--months", type=int, default=6)
     sub.add_parser("accounts", help="Lista contas")
     sub.add_parser("categories", help="Lista categorias")
     sub.add_parser("help", help="Ajuda em JSON")
@@ -106,6 +113,8 @@ def _run(argv: list[str] | None = None) -> int:
             result = list_entries(paths, date_value=args.date, month=args.month, limit=args.limit)
         elif command == "today":
             result = list_entries(paths, date_value=today.isoformat())
+        elif command == "upcoming":
+            result = upcoming(paths, today=today, months=args.months)
         elif command == "accounts":
             result = list_accounts(paths)
         elif command == "categories":

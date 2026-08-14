@@ -16,7 +16,11 @@ AMOUNT_WITH_UNIT_RE = re.compile(
 )
 AMOUNT_RS_RE = re.compile(r"r\$\s*(\d+(?:[.,]\d{1,2})?)", re.IGNORECASE)
 AMOUNT_AFTER_VERB_RE = re.compile(
-    r"\b(?:gastei|paguei|comprei|recebi|ganhei|entrou)\s+(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?)\b",
+    r"\b(?:gastei|paguei|comprei|recebi|ganhei|entrou|pago)\s+(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?)\b",
+    re.IGNORECASE,
+)
+AMOUNT_COMPRA_RE = re.compile(
+    r"\bcompra\s+de\s+(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?)\b",
     re.IGNORECASE,
 )
 OLD_AMOUNT_RE = re.compile(
@@ -27,8 +31,14 @@ NEW_AMOUNT_RE = re.compile(
     r"\b(?:foi|para|pra)\s+(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?)",
     re.IGNORECASE,
 )
+INSTALLMENTS_RE = re.compile(r"(?:em\s+)?(\d+)\s*x\b", re.IGNORECASE)
+DUE_DAY_RE = re.compile(
+    r"\b(?:todo\s+dia|dia|vence(?:m)?|vencimento)\s+(\d{1,2})\b",
+    re.IGNORECASE,
+)
 ISO_DATE_RE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
 BR_DATE_RE = re.compile(r"\b(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?\b")
+NUMBER_RE = re.compile(r"\d+(?:[.,]\d{1,2})?")
 
 ADD_EXPENSE_RE = re.compile(r"\b(gastei|paguei|comprei|gasto|despesa)\b", re.IGNORECASE)
 ADD_INCOME_RE = re.compile(r"\b(recebi|ganhei|entrou|salario|salário)\b", re.IGNORECASE)
@@ -44,10 +54,29 @@ LIST_RE = re.compile(
     r"\b(quanto gastei|o que gastei|lancamentos|lançamentos|fluxo de caixa|gastos de hoje|lista)\b",
     re.IGNORECASE,
 )
+UPCOMING_RE = re.compile(
+    r"\b(cobrancas|cobranças|vencimentos|o que vence|contas do mes|contas do mês|"
+    r"parcelas|futuro|proximos vencimentos|próximos vencimentos|agenda)\b",
+    re.IGNORECASE,
+)
 LAST_RE = re.compile(r"\b(ultimo|última|ultima)\b", re.IGNORECASE)
 CHANGE_CATEGORY_RE = re.compile(r"\b(?:muda|mudar|altera|alterar|corrige|corrigir)\s+(?:a\s+)?categoria\b", re.IGNORECASE)
-CHANGE_ACCOUNT_RE = re.compile(r"\b(?:muda|mudar|altera|alterar|corrige|corrigir)\s+(?:a\s+)?conta\b", re.IGNORECASE)
+CHANGE_ACCOUNT_RE = re.compile(
+    r"\b(?:muda|mudar|altera|alterar|corrige|corrigir)\s+(?:a\s+)?conta\s+para\b",
+    re.IGNORECASE,
+)
 HAS_DATE_CUE_RE = re.compile(r"\b(hoje|ontem)\b", re.IGNORECASE)
+RECURRING_RE = re.compile(
+    r"\b(mensal|todo mes|por mes|recorrente|assinatura|todo dia|toda mes)\b",
+    re.IGNORECASE,
+)
+BILL_RE = re.compile(
+    r"\b(conta de|agua|luz|telefone|celular|energia|internet|aluguel|condominio)\b",
+    re.IGNORECASE,
+)
+PARCEL_RE = re.compile(r"\b(parcela|parcelas|parcelado|parcelamento|cartao|cartão)\b", re.IGNORECASE)
+LANCAMENTO_RE = re.compile(r"\b(lancamento|lançamento)\b", re.IGNORECASE)
+COMPRA_RE = re.compile(r"\b(compra|comprei)\b", re.IGNORECASE)
 
 METHOD_MAP = (
     ("debito", "debito"),
@@ -56,6 +85,19 @@ METHOD_MAP = (
     ("pix", "pix"),
     ("dinheiro", "dinheiro"),
     ("especie", "dinheiro"),
+)
+
+BILL_LABELS = (
+    ("conta de agua", "Água"),
+    ("conta de luz", "Luz"),
+    ("telefone", "Telefone"),
+    ("celular", "Telefone"),
+    ("internet", "Internet"),
+    ("aluguel", "Aluguel"),
+    ("condominio", "Condomínio"),
+    ("energia", "Luz"),
+    ("agua", "Água"),
+    ("luz", "Luz"),
 )
 
 
@@ -70,6 +112,10 @@ class ParsedIntent:
     description: str | None = None
     date: str | None = None
     last: bool = False
+    target: str = "entry"
+    kind: str | None = None
+    installments: int | None = None
+    due_day: int | None = None
     fields: dict[str, Any] = field(default_factory=dict)
     raw: str = ""
 
@@ -89,11 +135,40 @@ def _parse_simple_amount(raw: str) -> float:
     return float(raw.replace(",", "."))
 
 
+def extract_installments(text: str) -> int | None:
+    match = INSTALLMENTS_RE.search(text)
+    if not match:
+        return None
+    count = int(match.group(1))
+    return count if count > 1 else None
+
+
+def extract_due_day(text: str) -> int | None:
+    match = DUE_DAY_RE.search(text)
+    if not match:
+        return None
+    day = int(match.group(1))
+    if 1 <= day <= 31:
+        return day
+    return None
+
+
 def extract_amount(text: str) -> float | None:
-    for pattern in (AMOUNT_WITH_UNIT_RE, AMOUNT_RS_RE, AMOUNT_AFTER_VERB_RE):
+    for pattern in (AMOUNT_WITH_UNIT_RE, AMOUNT_RS_RE, AMOUNT_COMPRA_RE, AMOUNT_AFTER_VERB_RE):
         match = pattern.search(text)
         if match:
             return _parse_simple_amount(match.group(1))
+    due_day = extract_due_day(text)
+    skip_spans = [m.span() for m in INSTALLMENTS_RE.finditer(text)]
+    for match in NUMBER_RE.finditer(text):
+        if any(match.start() >= start and match.end() <= end for start, end in skip_spans):
+            continue
+        raw = match.group(0)
+        if due_day is not None and raw.isdigit() and int(raw) == due_day:
+            continue
+        value = _parse_simple_amount(raw)
+        if value > 0:
+            return value
     return None
 
 
@@ -169,11 +244,28 @@ def resolve_category(text: str, catalog: Catalog, entry_type: str) -> str | None
     return None
 
 
+def resolve_bill_description(text: str) -> str | None:
+    norm = normalize_text(text)
+    hits: list[tuple[int, str]] = []
+    for needle, label in BILL_LABELS:
+        if contains_term(norm, needle):
+            hits.append((len(needle), label))
+    if not hits:
+        return None
+    hits.sort(reverse=True)
+    return hits[0][1]
+
+
 def resolve_description(text: str, catalog: Catalog, category: str | None) -> str:
+    bill = resolve_bill_description(text)
+    if bill:
+        return bill
     norm = normalize_text(text)
     matched = _longest_keyword_match(norm, catalog.description_keywords)
     if matched:
         return matched
+    if COMPRA_RE.search(text):
+        return "Compra"
     return category or "Lançamento"
 
 
@@ -191,7 +283,30 @@ def resolve_account(text: str, catalog: Catalog) -> str | None:
     return hits[0][1]
 
 
+def is_recurring(text: str) -> bool:
+    return bool(RECURRING_RE.search(normalize_text(text)))
+
+
+def is_bill(text: str) -> bool:
+    return bool(BILL_RE.search(normalize_text(text)))
+
+
+def is_schedule_message(text: str, *, installments: int | None) -> bool:
+    if installments:
+        return True
+    if LANCAMENTO_RE.search(text):
+        return False
+    norm = normalize_text(text)
+    if is_recurring(text) or is_bill(text):
+        return True
+    if PARCEL_RE.search(norm) or "cobranca" in norm:
+        return True
+    return False
+
+
 def detect_action(text: str) -> str:
+    if UPCOMING_RE.search(text):
+        return "upcoming"
     if REMOVE_RE.search(text):
         return "remove"
     if EDIT_RE.search(text) and not ADD_EXPENSE_RE.search(text) and not ADD_INCOME_RE.search(text):
@@ -199,6 +314,10 @@ def detect_action(text: str) -> str:
     if ADD_INCOME_RE.search(text):
         return "add"
     if ADD_EXPENSE_RE.search(text):
+        return "add"
+    if COMPRA_RE.search(text) and extract_installments(text):
+        return "add"
+    if is_recurring(text) or (is_bill(text) and extract_amount(text)):
         return "add"
     if LIST_RE.search(text):
         return "list"
@@ -218,6 +337,8 @@ def detect_entry_type(text: str) -> str | None:
 
 def parse_message(text: str, catalog: Catalog, today: date) -> ParsedIntent:
     stripped = text.strip()
+    installments = extract_installments(stripped)
+    due_day = extract_due_day(stripped)
     action = detect_action(stripped)
     entry_type = detect_entry_type(stripped)
     amount = extract_amount(stripped)
@@ -228,6 +349,29 @@ def parse_message(text: str, catalog: Catalog, today: date) -> ParsedIntent:
     description = resolve_description(stripped, catalog, category)
     parsed_date = parse_date_from_text(stripped, today)
     last = bool(LAST_RE.search(normalize_text(stripped)))
+
+    kind: str | None = None
+    target = "entry"
+    paying_now = bool(ADD_EXPENSE_RE.search(stripped)) and not installments and not is_recurring(stripped)
+
+    if action == "upcoming":
+        target = "schedule"
+    elif installments:
+        kind = "installment"
+        target = "schedule"
+        method = method or "credito"
+        entry_type = "expense"
+    elif (is_recurring(stripped) or (is_bill(stripped) and not paying_now)) and action in {
+        "add",
+        "remove",
+        "edit",
+    }:
+        kind = "recurring"
+        target = "schedule"
+        entry_type = "expense"
+    elif action in {"remove", "edit"} and is_schedule_message(stripped, installments=installments):
+        target = "schedule"
+        kind = "installment" if PARCEL_RE.search(stripped) else "recurring"
 
     fields: dict[str, Any] = {}
     match_amount = amount
@@ -245,14 +389,16 @@ def parse_message(text: str, catalog: Catalog, today: date) -> ParsedIntent:
             fields["account"] = account
         if method and re.search(r"\b(?:muda|mudar|altera|alterar)\s+(?:o\s+)?(?:metodo|método|pagamento)\b", stripped, re.I):
             fields["method"] = method
+        if due_day and re.search(r"\b(vencimento|vence|dia)\b", normalize_text(stripped)):
+            fields["due_day"] = due_day
         if parsed_date and (HAS_DATE_CUE_RE.search(stripped) or ISO_DATE_RE.search(stripped) or BR_DATE_RE.search(stripped)):
             if re.search(r"\b(?:muda|mudar|altera|para)\s+(?:a\s+)?data\b", normalize_text(stripped)):
                 fields["date"] = parsed_date
-        last = last or (match_amount is None and account is None and category is None)
+        last = last or (match_amount is None and account is None and category is None and description in {None, category, "Lançamento"})
 
     if action == "remove":
         match_amount = old_amount or amount
-        last = last or (match_amount is None and account is None and category is None)
+        last = last or (match_amount is None and account is None and category is None and not resolve_bill_description(stripped))
 
     if action == "add":
         match_amount = amount
@@ -264,9 +410,13 @@ def parse_message(text: str, catalog: Catalog, today: date) -> ParsedIntent:
         category=category,
         account=account,
         method=method if action == "add" else None,
-        description=description if action == "add" else None,
+        description=description if action in {"add", "remove", "edit"} else None,
         date=parsed_date,
         last=last,
+        target=target,
+        kind=kind,
+        installments=installments,
+        due_day=due_day,
         fields=fields,
         raw=stripped,
     )

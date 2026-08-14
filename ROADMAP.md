@@ -2,6 +2,13 @@
 
 A v2 começa do zero: um agente de fluxo de caixa que entende o dia a dia.
 
+## v2.1 — Entregue
+
+- Contas mensais recorrentes (água, luz, telefone) com dia de vencimento
+- Compras no crédito em Nx projetadas na agenda
+- Inclusão, edição e remoção das cobranças via mensagem
+- `upcoming`: débitos e parcelas em aberto nos próximos meses
+
 ## v2.0 — Entregue
 
 - Mensagens em pt-BR → inserir, remover ou editar lançamento
@@ -16,7 +23,7 @@ A v2 começa do zero: um agente de fluxo de caixa que entende o dia a dia.
 | Item | Notas |
 |------|--------|
 | Relatório mensal por categoria | Leitura agregada além de `list` |
-| Cartão com fatura e parcelas | Contas de crédito com ciclo BR |
+| Ciclo de fatura do cartão | Fechamento/vencimento além do Nx simples |
 | Mentoria sob demanda | Só depois que o fluxo de caixa estiver estável |
 | Aliases extras de conta na conversa | “itaú”, “caju”, etc. sem editar JSON |
 | Importação OFX/CSV | Fora do núcleo conversacional |
@@ -33,5 +40,6 @@ A v2 começa do zero: um agente de fluxo de caixa que entende o dia a dia.
 
 | Versão | Data | Notas |
 |--------|------|--------|
+| v2.1.0 | 2026-08-14 | Contas mensais, crédito em Nx e agenda de cobranças futuras |
 | v2.0.0 | 2026-08-14 | Reescrita: fluxo de caixa com insert/remove/edit a partir de mensagens |
 | v1.4.5 | 2026-06-17 | Última linha da geração event-sourced (ledger append-only) |
