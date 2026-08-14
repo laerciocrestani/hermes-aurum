@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Aurum — ponto de entrada único (caminho absoluto, HERMES_HOME do perfil).
+# Uso: aurum-run apply "Gastei 30 reais em mercado no débito com o banco Inter"
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROFILE="$(cd "$HERE/../../.." && pwd)"
+export HERMES_HOME="${HERMES_HOME:-$PROFILE}"
+
+if [[ "${1:-}" == "" ]]; then
+  set -- help
+fi
+
+exec python3 "$HERE/cli.py" "$@"

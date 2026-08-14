@@ -1,0 +1,20 @@
+{
+  "accounts": [
+    {
+      "name": "Banco Inter",
+      "aliases": ["inter", "banco inter"]
+    },
+    {
+      "name": "Nubank",
+      "aliases": ["nubank", "nu", "roxinho"]
+    },
+    {
+      "name": "C6 Bank",
+      "aliases": ["c6", "c6bank", "c6 bank", "c6banck"]
+    },
+    {
+      "name": "Carteira",
+      "aliases": ["carteira"]
+    }
+  ]
+}

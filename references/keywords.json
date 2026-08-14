@@ -1,0 +1,87 @@
+{
+  "expense": {
+    "Alimentação": [
+      "supermercado",
+      "mercado",
+      "ifood",
+      "restaurante",
+      "almoco",
+      "jantar",
+      "padaria",
+      "lanche",
+      "feira",
+      "cafe",
+      "delivery",
+      "comida"
+    ],
+    "Transporte": [
+      "uber",
+      "99 pop",
+      "app 99",
+      "gasolina",
+      "combustivel",
+      "estacionamento",
+      "onibus",
+      "metro",
+      "passagem",
+      "pedagio",
+      "taxi"
+    ],
+    "Moradia": [
+      "aluguel",
+      "condominio",
+      "luz",
+      "energia",
+      "agua",
+      "internet",
+      "iptu"
+    ],
+    "Saúde": [
+      "farmacia",
+      "medico",
+      "consulta",
+      "plano de saude",
+      "exame",
+      "dentista"
+    ],
+    "Lazer": [
+      "cinema",
+      "netflix",
+      "spotify",
+      "bar",
+      "show",
+      "viagem",
+      "jogo"
+    ],
+    "Educação": [
+      "curso",
+      "faculdade",
+      "mensalidade",
+      "livro",
+      "escola"
+    ],
+    "Vestuário": [
+      "vestuario",
+      "roupa",
+      "roupas",
+      "sapato",
+      "tenis",
+      "calcado"
+    ]
+  },
+  "income": {
+    "Salário": ["salario", "pagamento"],
+    "Freelance": ["freelance", "freela"],
+    "Investimentos": ["dividendo", "rendimento", "juros"]
+  },
+  "description": {
+    "Mercado": ["supermercado", "mercado"],
+    "iFood": ["ifood"],
+    "Uber": ["uber"],
+    "99": ["99 pop", "app 99"],
+    "Padaria": ["padaria"],
+    "Farmácia": ["farmacia"],
+    "Aluguel": ["aluguel"],
+    "Combustível": ["gasolina", "combustivel"]
+  }
+}
